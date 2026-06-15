@@ -1,0 +1,13 @@
+{
+  "command": "test -f skills/forge/commands/run.md",
+  "cwd": "/Users/anmolsam/projects/forge",
+  "duration_ms": 2,
+  "exit_code": 0,
+  "git_hash_after": "e1fea3fbe3d6194b7c1cf2cd4d97018c7e3a25ae",
+  "git_hash_before": "e1fea3fbe3d6194b7c1cf2cd4d97018c7e3a25ae",
+  "passed": true,
+  "stderr": "",
+  "stdout": "",
+  "timestamp_end": "2026-06-15T22:53:45.605477+00:00",
+  "timestamp_start": "2026-06-15T22:53:45.602580+00:00"
+}

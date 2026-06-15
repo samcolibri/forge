@@ -1,0 +1,668 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>FORGE — Outcome-Based Agent OS</title>
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+  <style>
+    :root {
+      --bg: #0a0e1a;
+      --surface: #111827;
+      --surface2: #151e2e;
+      --border: #1e2d40;
+      --blue: #3b82f6;
+      --blue-dim: #1d4ed8;
+      --green: #10b981;
+      --green-dim: #065f46;
+      --yellow: #f59e0b;
+      --red: #ef4444;
+      --purple: #8b5cf6;
+      --cyan: #06b6d4;
+      --text: #e2e8f0;
+      --muted: #64748b;
+      --subtle: #94a3b8;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+      line-height: 1.6;
+      min-height: 100vh;
+    }
+
+    /* ── NAV ── */
+    nav {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      background: rgba(10,14,26,0.92);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0.75rem 2rem;
+    }
+    .nav-brand {
+      font-size: 1.25rem;
+      font-weight: 800;
+      letter-spacing: 0.08em;
+      color: var(--blue);
+      text-decoration: none;
+    }
+    .nav-links {
+      display: flex;
+      gap: 2rem;
+      list-style: none;
+    }
+    .nav-links a {
+      color: var(--subtle);
+      text-decoration: none;
+      font-size: 0.875rem;
+      transition: color 0.2s;
+    }
+    .nav-links a:hover { color: var(--text); }
+
+    /* ── LAYOUT ── */
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 0 2rem;
+    }
+
+    section {
+      padding: 4rem 0;
+    }
+
+    /* ── HERO ── */
+    .hero {
+      text-align: center;
+      padding: 6rem 0 4rem;
+      background: radial-gradient(ellipse at 50% 0%, rgba(59,130,246,0.12) 0%, transparent 70%);
+      border-bottom: 1px solid var(--border);
+    }
+    .hero-eyebrow {
+      font-size: 0.75rem;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: var(--blue);
+      margin-bottom: 1rem;
+      font-weight: 600;
+    }
+    .hero-title {
+      font-size: clamp(4rem, 10vw, 8rem);
+      font-weight: 900;
+      letter-spacing: -0.04em;
+      background: linear-gradient(135deg, #fff 0%, var(--blue) 50%, var(--green) 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      line-height: 1;
+      margin-bottom: 1rem;
+    }
+    .hero-subtitle {
+      font-size: 1.375rem;
+      color: var(--subtle);
+      font-weight: 400;
+      margin-bottom: 1.5rem;
+    }
+    .hero-tagline {
+      font-size: 1.75rem;
+      font-weight: 700;
+      color: var(--text);
+      margin-bottom: 2.5rem;
+    }
+    .hero-tagline span { color: var(--green); }
+    .pills {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.75rem;
+      justify-content: center;
+    }
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      padding: 0.35rem 1rem;
+      border-radius: 999px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      border: 1px solid var(--border);
+      color: var(--subtle);
+      background: var(--surface);
+    }
+    .pill.blue { border-color: var(--blue); color: var(--blue); background: rgba(59,130,246,0.08); }
+    .pill.green { border-color: var(--green); color: var(--green); background: rgba(16,185,129,0.08); }
+    .pill.purple { border-color: var(--purple); color: var(--purple); background: rgba(139,92,246,0.08); }
+
+    /* ── SECTION HEADERS ── */
+    .section-label {
+      font-size: 0.7rem;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: var(--blue);
+      font-weight: 700;
+      margin-bottom: 0.5rem;
+    }
+    .section-title {
+      font-size: 2rem;
+      font-weight: 800;
+      margin-bottom: 0.75rem;
+      letter-spacing: -0.02em;
+    }
+    .section-desc {
+      color: var(--subtle);
+      font-size: 1rem;
+      margin-bottom: 2.5rem;
+      max-width: 600px;
+    }
+
+    /* ── MERMAID DIAGRAMS ── */
+    .diagram-wrap {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 2rem 1.5rem;
+      overflow-x: auto;
+    }
+    .diagram-wrap .mermaid {
+      display: flex;
+      justify-content: center;
+    }
+
+    /* ── TABLE ── */
+    .projects-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.9rem;
+    }
+    .projects-table th {
+      text-align: left;
+      padding: 0.75rem 1rem;
+      color: var(--muted);
+      font-size: 0.75rem;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      border-bottom: 1px solid var(--border);
+    }
+    .projects-table td {
+      padding: 1rem;
+      border-bottom: 1px solid rgba(30,45,64,0.5);
+      vertical-align: middle;
+    }
+    .projects-table tr:last-child td { border-bottom: none; }
+    .projects-table tr:hover td { background: rgba(59,130,246,0.04); }
+
+    .project-name {
+      font-weight: 700;
+      color: var(--blue);
+      text-decoration: none;
+    }
+    .project-name:hover { text-decoration: underline; }
+
+    .outcome-text {
+      color: var(--subtle);
+      font-size: 0.85rem;
+      max-width: 300px;
+    }
+
+    .badge {
+      display: inline-block;
+      padding: 0.25rem 0.75rem;
+      border-radius: 999px;
+      font-size: 0.75rem;
+      font-weight: 600;
+    }
+    .badge-yellow { background: rgba(245,158,11,0.15); color: var(--yellow); border: 1px solid rgba(245,158,11,0.3); }
+    .badge-green  { background: rgba(16,185,129,0.15); color: var(--green);  border: 1px solid rgba(16,185,129,0.3); }
+    .badge-blue   { background: rgba(59,130,246,0.15); color: var(--blue);   border: 1px solid rgba(59,130,246,0.3); }
+
+    .progress-bar {
+      height: 6px;
+      background: var(--border);
+      border-radius: 999px;
+      overflow: hidden;
+      width: 120px;
+    }
+    .progress-bar-fill {
+      height: 100%;
+      border-radius: 999px;
+      background: linear-gradient(90deg, var(--blue), var(--green));
+    }
+
+    .timestamp { color: var(--muted); font-size: 0.8rem; }
+
+    /* ── HOW IT WORKS ── */
+    .steps-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 1.5rem;
+    }
+    .step-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1.75rem;
+      position: relative;
+      transition: border-color 0.2s, transform 0.2s;
+    }
+    .step-card:hover { border-color: var(--blue); transform: translateY(-2px); }
+    .step-num {
+      font-size: 3rem;
+      font-weight: 900;
+      color: rgba(59,130,246,0.18);
+      line-height: 1;
+      position: absolute;
+      top: 1rem;
+      right: 1.25rem;
+    }
+    .step-icon { font-size: 1.75rem; margin-bottom: 1rem; }
+    .step-title { font-size: 1.1rem; font-weight: 700; margin-bottom: 0.5rem; }
+    .step-body { color: var(--subtle); font-size: 0.9rem; }
+
+    /* ── WORKERS ── */
+    .workers-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: 1rem;
+    }
+    .worker-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 1.25rem;
+      transition: border-color 0.2s, transform 0.2s;
+    }
+    .worker-card:hover { transform: translateY(-2px); }
+    .worker-card.scout   { border-top: 3px solid var(--blue); }
+    .worker-card.enricher { border-top: 3px solid var(--cyan); }
+    .worker-card.validator { border-top: 3px solid var(--yellow); }
+    .worker-card.writer  { border-top: 3px solid var(--green); }
+    .worker-card.qa      { border-top: 3px solid var(--purple); }
+    .worker-card.reporter { border-top: 3px solid var(--red); }
+
+    .worker-name {
+      font-family: monospace;
+      font-size: 0.85rem;
+      font-weight: 700;
+      letter-spacing: 0.05em;
+      margin-bottom: 0.25rem;
+    }
+    .worker-model {
+      font-size: 0.72rem;
+      color: var(--muted);
+      margin-bottom: 0.75rem;
+      font-family: monospace;
+    }
+    .worker-desc { font-size: 0.85rem; color: var(--subtle); }
+
+    /* ── CLI ── */
+    .cli-block {
+      background: #060a14;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      overflow: hidden;
+    }
+    .cli-titlebar {
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 0.5rem 1rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    .cli-dot { width: 12px; height: 12px; border-radius: 50%; }
+    .cli-dot.r { background: #ff5f57; }
+    .cli-dot.y { background: #febc2e; }
+    .cli-dot.g { background: #28c840; }
+    .cli-titlebar span { color: var(--muted); font-size: 0.75rem; margin-left: 0.5rem; }
+    .cli-code {
+      padding: 1.5rem;
+      font-family: 'Fira Code', 'Cascadia Code', monospace;
+      font-size: 0.875rem;
+      line-height: 2;
+      overflow-x: auto;
+    }
+    .cli-comment { color: var(--muted); }
+    .cli-prompt { color: var(--green); }
+    .cli-cmd    { color: var(--text); }
+    .cli-flag   { color: var(--blue); }
+    .cli-str    { color: var(--yellow); }
+    .cli-out    { color: var(--subtle); padding-left: 1rem; }
+
+    /* ── FOOTER ── */
+    footer {
+      border-top: 1px solid var(--border);
+      padding: 2.5rem 2rem;
+      text-align: center;
+      color: var(--muted);
+      font-size: 0.85rem;
+    }
+    footer a { color: var(--blue); text-decoration: none; }
+    footer a:hover { text-decoration: underline; }
+
+    /* ── UTILS ── */
+    .divider {
+      height: 1px;
+      background: var(--border);
+    }
+
+    @media (max-width: 768px) {
+      .nav-links { display: none; }
+      .hero-title { font-size: 4rem; }
+      section { padding: 2.5rem 0; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav>
+  <a class="nav-brand" href="#">FORGE</a>
+  <ul class="nav-links">
+    <li><a href="#architecture">Architecture</a></li>
+    <li><a href="#projects">Projects</a></li>
+    <li><a href="#how">How It Works</a></li>
+    <li><a href="#workers">Workers</a></li>
+    <li><a href="#loop">The Loop</a></li>
+    <li><a href="#cli">CLI</a></li>
+    <li><a href="https://github.com/samcolibri/forge" target="_blank">GitHub →</a></li>
+  </ul>
+</nav>
+
+<!-- HERO -->
+<section class="hero">
+  <div class="container">
+    <p class="hero-eyebrow">samcolibri / forge</p>
+    <h1 class="hero-title">FORGE</h1>
+    <p class="hero-subtitle">Outcome-Based Agent OS</p>
+    <p class="hero-tagline">Define the outcome. <span>FORGE runs the loop.</span></p>
+    <div class="pills">
+      <span class="pill blue">⚙ Version 1.0</span>
+      <span class="pill">Universal</span>
+      <span class="pill">Any Repo</span>
+      <span class="pill green">24/7 Loop</span>
+      <span class="pill purple">Human Gates</span>
+    </div>
+  </div>
+</section>
+
+<!-- ARCHITECTURE DIAGRAM -->
+<section id="architecture">
+  <div class="container">
+    <p class="section-label">System Design</p>
+    <h2 class="section-title">Full Architecture</h2>
+    <p class="section-desc">From raw outcome text to shipped result — the complete FORGE pipeline.</p>
+    <div class="diagram-wrap">
+      <div class="mermaid">
+flowchart TD
+    A["🎯 OUTCOME INPUT\nany format: text / paste / notes / PDF"]
+    B["💉 INJECT\nBASE_FABLE → structured fable prompt\nvia Claude Sonnet"]
+    C["🏗 ARCHITECT\nfable → worker fleet\n+ ARCHITECTURE.yaml"]
+    D{{"👤 Human Sign-Off"}}
+    E["🚀 SPAWNER\nstarts loop as background daemon"]
+    F["🔄 LOOP ORCHESTRATOR\n24/7 — survives restarts"]
+    G["⚙️ WORKER POOL\nClaude API · Codex bash\nAGY · any tool"]
+    H["✅ QA GATE\nscore ≥ 8.5 / 10"]
+    I{{"👤 Human Approves\nOutputs"}}
+    J["🎯 OUTCOME VALIDATOR\nmet? → done  else → loop again"]
+    K["📊 REPORTER\nhourly email\n+ GitHub Pages update"]
+
+    A --> B --> C --> D
+    D -->|approved| E --> F
+    F --> G --> H
+    H -->|pass| I
+    H -->|fail| G
+    I -->|approved| J
+    I -->|rejected| G
+    J -->|not yet| F
+    J -->|done ✓| K
+
+    style A fill:#1e3a5f,stroke:#3b82f6,color:#e2e8f0
+    style B fill:#1a3040,stroke:#06b6d4,color:#e2e8f0
+    style C fill:#1a3040,stroke:#06b6d4,color:#e2e8f0
+    style D fill:#2d1f63,stroke:#8b5cf6,color:#e2e8f0
+    style E fill:#1e3a5f,stroke:#3b82f6,color:#e2e8f0
+    style F fill:#1e3a5f,stroke:#3b82f6,color:#e2e8f0
+    style G fill:#133828,stroke:#10b981,color:#e2e8f0
+    style H fill:#3d2a10,stroke:#f59e0b,color:#e2e8f0
+    style I fill:#2d1f63,stroke:#8b5cf6,color:#e2e8f0
+    style J fill:#133828,stroke:#10b981,color:#e2e8f0
+    style K fill:#1e3a5f,stroke:#3b82f6,color:#e2e8f0
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="divider"></div>
+
+<!-- ACTIVE PROJECTS -->
+<section id="projects">
+  <div class="container">
+    <p class="section-label">Live Dashboard</p>
+    <h2 class="section-title">Active Projects</h2>
+    <p class="section-desc">All FORGE-powered agents and their current states.</p>
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;overflow:hidden;">
+      <table class="projects-table">
+        <thead>
+          <tr>
+            <th>Project</th>
+            <th>Outcome</th>
+            <th>Status</th>
+            <th>Progress</th>
+            <th>Last Update</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>
+              <a class="project-name" href="https://samcolibri.github.io/moreland-sdr-agent/" target="_blank">moreland-sdr</a>
+              <div style="font-size:0.72rem;color:var(--muted);margin-top:0.2rem;">samcolibri/moreland-sdr-agent</div>
+            </td>
+            <td class="outcome-text">≥5 booked meetings from 100 school districts in Moreland area</td>
+            <td><span class="badge badge-yellow">Architecture Approved</span></td>
+            <td>
+              <div style="display:flex;align-items:center;gap:0.75rem;">
+                <div class="progress-bar"><div class="progress-bar-fill" style="width:15%"></div></div>
+                <span style="font-size:0.8rem;color:var(--subtle);">15%</span>
+              </div>
+            </td>
+            <td class="timestamp">Awaiting API keys</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<div class="divider"></div>
+
+<!-- HOW IT WORKS -->
+<section id="how">
+  <div class="container">
+    <p class="section-label">Getting Started</p>
+    <h2 class="section-title">How It Works</h2>
+    <p class="section-desc">Three steps from outcome to autonomous execution.</p>
+    <div class="steps-grid">
+      <div class="step-card">
+        <span class="step-num">1</span>
+        <div class="step-icon">🎯</div>
+        <h3 class="step-title">Define Your Outcome</h3>
+        <p class="step-body">Type it in plain English, paste notes, or upload a brief. Any format works. FORGE converts it into a structured fable prompt using CL4R1T4S injection — no templates to fill out.</p>
+      </div>
+      <div class="step-card">
+        <span class="step-num">2</span>
+        <div class="step-icon">✍️</div>
+        <h3 class="step-title">Sign Off on Architecture</h3>
+        <p class="step-body">FORGE shows you the worker fleet it designed: which agents run, what tools they use, in what order. You approve or tweak. One gate before the loop starts — nothing more.</p>
+      </div>
+      <div class="step-card">
+        <span class="step-num">3</span>
+        <div class="step-icon">📬</div>
+        <h3 class="step-title">Check Email Hourly</h3>
+        <p class="step-body">FORGE runs 24/7 until the outcome is met. You get an hourly email and a live dashboard. Human gates control anything that leaves the system. You never have to ask "what's happening?"</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="divider"></div>
+
+<!-- WORKERS -->
+<section id="workers">
+  <div class="container">
+    <p class="section-label">Agent Archetypes</p>
+    <h2 class="section-title">Worker Types</h2>
+    <p class="section-desc">FORGE assembles a fleet from these building blocks, customized per outcome.</p>
+    <div class="workers-grid">
+      <div class="worker-card scout">
+        <div class="worker-name">SCOUT</div>
+        <div class="worker-model">Claude Sonnet 4.6</div>
+        <div class="worker-desc">Research and discovery — finds targets, surfaces signals, scrapes data. Runs first in every pipeline.</div>
+      </div>
+      <div class="worker-card enricher">
+        <div class="worker-name">ENRICHER</div>
+        <div class="worker-model">Claude Haiku / Codex</div>
+        <div class="worker-desc">Takes raw targets and fills in missing data — contacts, context, firmographics. Calls external APIs.</div>
+      </div>
+      <div class="worker-card validator">
+        <div class="worker-name">VALIDATOR</div>
+        <div class="worker-model">Claude Haiku</div>
+        <div class="worker-desc">Checks data quality, deduplicates, verifies against known facts. Rejects bad records before they move forward.</div>
+      </div>
+      <div class="worker-card writer">
+        <div class="worker-name">WRITER</div>
+        <div class="worker-model">Claude Sonnet 4.6</div>
+        <div class="worker-desc">Drafts emails, summaries, proposals, reports. Follows brand rules. Outputs held in human-gate queue.</div>
+      </div>
+      <div class="worker-card qa">
+        <div class="worker-name">QA_SCORER</div>
+        <div class="worker-model">Claude Opus 4.7</div>
+        <div class="worker-desc">Scores every output ≥8.5/10 before it advances. Provides structured critique. The quality gate that never sleeps.</div>
+      </div>
+      <div class="worker-card reporter">
+        <div class="worker-name">REPORTER</div>
+        <div class="worker-model">Claude Haiku</div>
+        <div class="worker-desc">Compiles hourly progress emails and updates the live GitHub Pages dashboard. Escalates blockers automatically.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="divider"></div>
+
+<!-- THE LOOP STATE MACHINE -->
+<section id="loop">
+  <div class="container">
+    <p class="section-label">State Machine</p>
+    <h2 class="section-title">The Loop</h2>
+    <p class="section-desc">Every unit of work moves through this universal state machine. Restartable, resumable, auditable.</p>
+    <div class="diagram-wrap">
+      <div class="mermaid">
+stateDiagram-v2
+    [*] --> queued : task created
+    queued --> dispatching : loop tick
+    dispatching --> executing : worker picked up
+    executing --> qa_scoring : worker done
+    qa_scoring --> dispatching : score < 8.5 (retry)
+    qa_scoring --> pending_approval : score ≥ 8.5
+    pending_approval --> approved : human approves
+    pending_approval --> dispatching : human rejects
+    approved --> exported : output shipped
+    exported --> outcome_check : validator runs
+    outcome_check --> queued : outcome not yet met
+    outcome_check --> done : outcome met ✓
+    dispatching --> escalated : max retries hit
+    escalated --> [*] : human resolves
+    done --> [*]
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="divider"></div>
+
+<!-- CLI -->
+<section id="cli">
+  <div class="container">
+    <p class="section-label">Developer Interface</p>
+    <h2 class="section-title">CLI Commands</h2>
+    <p class="section-desc">Four commands. Works in any Claude Code session once the skill is linked.</p>
+    <div class="cli-block">
+      <div class="cli-titlebar">
+        <span class="cli-dot r"></span>
+        <span class="cli-dot y"></span>
+        <span class="cli-dot g"></span>
+        <span>FORGE CLI — Claude Code skill</span>
+      </div>
+      <div class="cli-code">
+<span class="cli-comment"># ─── Install (one-time, any machine) ───────────────────────</span>
+<span class="cli-prompt">$</span> <span class="cli-cmd">ln -s ~/projects/forge/skills/forge ~/.claude/skills/forge</span>
+<span class="cli-out">→ Skill linked. Use /forge:run in any Claude Code session.</span>
+
+<span class="cli-comment"># ─── Start a new FORGE project ──────────────────────────────</span>
+<span class="cli-prompt">/forge:run</span> <span class="cli-str">"book 5 meetings for Moreland school districts"</span>
+<span class="cli-out">→ Injecting fable...  Designing worker fleet...  Awaiting sign-off.</span>
+
+<span class="cli-comment"># ─── Check loop status ──────────────────────────────────────</span>
+<span class="cli-prompt">/forge:status</span>
+<span class="cli-out">→ moreland-sdr  |  queued: 12  |  pending_approval: 3  |  done: 0</span>
+
+<span class="cli-comment"># ─── Approve pending outputs ────────────────────────────────</span>
+<span class="cli-prompt">/forge:approve</span> <span class="cli-flag">--project</span> <span class="cli-str">moreland-sdr</span>
+<span class="cli-out">→ 3 outputs in queue. Review each → a(pprove) / r(eject) / s(kip)</span>
+
+<span class="cli-comment"># ─── Stop loop (pause — resumable) ─────────────────────────</span>
+<span class="cli-prompt">/forge:stop</span> <span class="cli-flag">--project</span> <span class="cli-str">moreland-sdr</span>
+<span class="cli-out">→ Loop paused. State saved. Resume with /forge:run --resume</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer>
+  <p style="margin-bottom:0.5rem;">
+    <strong style="color:var(--text);">FORGE</strong> — Outcome-Based Agent OS
+  </p>
+  <p>
+    <a href="https://github.com/samcolibri/forge" target="_blank">github.com/samcolibri/forge</a>
+    &nbsp;·&nbsp;
+    <a href="https://samcolibri.github.io/moreland-sdr-agent/" target="_blank">First Project: Moreland SDR →</a>
+  </p>
+  <p style="margin-top:1rem;font-size:0.75rem;">Built by Sam · Powered by Claude · 2026</p>
+</footer>
+
+<script>
+  mermaid.initialize({
+    startOnLoad: true,
+    theme: 'dark',
+    themeVariables: {
+      primaryColor: '#1e3a5f',
+      primaryTextColor: '#e2e8f0',
+      primaryBorderColor: '#3b82f6',
+      lineColor: '#3b82f6',
+      secondaryColor: '#111827',
+      tertiaryColor: '#151e2e',
+      background: '#0a0e1a',
+      mainBkg: '#111827',
+      nodeBorder: '#1e2d40',
+      clusterBkg: '#151e2e',
+      titleColor: '#e2e8f0',
+      edgeLabelBackground: '#111827',
+      actorBkg: '#1e3a5f',
+      actorBorder: '#3b82f6',
+      actorTextColor: '#e2e8f0',
+    },
+    flowchart: { curve: 'basis', padding: 20 },
+    stateDiagram: { dividerMargin: 10 }
+  });
+</script>
+
+</body>
+</html>

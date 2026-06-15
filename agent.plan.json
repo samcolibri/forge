@@ -1,0 +1,35 @@
+{
+  "version": 1,
+  "project": "forge",
+  "tasks": [
+    {
+      "id": "T1",
+      "title": "Build FORGE skill files: SKILL.md, 4 command files, BASE_FABLE.md, engine stubs",
+      "status": "approved",
+      "scope": {
+        "include": ["skills/**", "prompts/**", "engine/**"],
+        "exclude": []
+      },
+      "acceptance": [
+        "skills/forge/SKILL.md exists with correct frontmatter",
+        "skills/forge/commands/run.md exists",
+        "skills/forge/commands/design.md exists",
+        "skills/forge/commands/status.md exists",
+        "skills/forge/commands/approve.md exists",
+        "prompts/BASE_FABLE.md exists with all 9 template variables"
+      ],
+      "verify": [
+        "test -f skills/forge/SKILL.md",
+        "test -f skills/forge/commands/run.md",
+        "test -f skills/forge/commands/design.md",
+        "test -f skills/forge/commands/status.md",
+        "test -f skills/forge/commands/approve.md",
+        "test -f prompts/BASE_FABLE.md"
+      ],
+      "risk": {
+        "level": "low",
+        "reasons": []
+      }
+    }
+  ]
+}

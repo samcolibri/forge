@@ -1,0 +1,16 @@
+{
+  "files_allowed": [
+    "skills/**",
+    "prompts/**",
+    "engine/**"
+  ],
+  "needs_spike": false,
+  "security_sensitive": false,
+  "spec_path": null,
+  "spec_skip_reason": null,
+  "state_migration": false,
+  "task": "Build FORGE skill files: SKILL.md, run/design/status/approve commands, BASE_FABLE.md",
+  "task_id": "T1",
+  "tdd_required": true,
+  "validation_commands": []
+}

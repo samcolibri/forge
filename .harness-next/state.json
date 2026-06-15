@@ -1,0 +1,12 @@
+{
+  "evidence_gaps": [
+    "T1"
+  ],
+  "project": "forge",
+  "tasks_active": [
+    "T1"
+  ],
+  "tasks_done": 0,
+  "tasks_total": 1,
+  "tdd_mode": "warn"
+}
