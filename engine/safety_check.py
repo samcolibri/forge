@@ -32,7 +32,7 @@ from typing import Optional
 
 # Each entry: (human_label, compiled_regex)
 _RAW_PATTERNS: list[tuple[str, str]] = [
-    ("anthropic_api_key",    r"sk-ant-[a-zA-Z0-9\-]{20,}"),
+    ("anthropic_api_key",    r"sk-ant-[a-zA-Z0-9\-]{10,}"),
     ("github_pat_classic",   r"ghp_[a-zA-Z0-9]{36,}"),
     ("github_pat_fine",      r"github_pat_[a-zA-Z0-9_]{82,}"),
     ("airtable_token",       r"patAKZ[a-zA-Z0-9.]{10,}"),
@@ -40,7 +40,7 @@ _RAW_PATTERNS: list[tuple[str, str]] = [
     ("aws_access_key",       r"AKIA[A-Z0-9]{16}"),
     ("aws_secret_key",       r"(?i)aws.{0,20}secret.{0,10}=\s*[A-Za-z0-9/+=]{40}"),
     ("openai_api_key",       r"sk-[a-zA-Z0-9]{48,}"),
-    ("anthropic_admin_key",  r"sk-ant-admin[a-zA-Z0-9\-]{10,}"),
+    ("anthropic_admin_key",  r"sk-ant-admin[a-zA-Z0-9\-]{5,}"),
     ("sendgrid_key",         r"SG\.[a-zA-Z0-9\-_]{22}\.[a-zA-Z0-9\-_]{43}"),
     ("stripe_key",           r"(?:sk|pk)_(?:test|live)_[a-zA-Z0-9]{24,}"),
     ("twilio_sid",           r"AC[a-zA-Z0-9]{32}"),

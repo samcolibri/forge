@@ -117,7 +117,7 @@ def build_meta_prompt(outcome: str, filled_fable: str) -> str:
         {outcome}
 
         Filled fable:
-        {filled_fable[:3000]}
+        {filled_fable[:8000]}
 
         Return ONLY valid JSON. No markdown, no preamble.
     """).strip()
@@ -163,7 +163,13 @@ def main() -> None:
         sys.exit(1)
 
     client = anthropic.Anthropic(api_key=api_key)
-    base_fable = load_base_fable()
+    base_fable_raw = load_base_fable()
+    # Strip the template meta-header block (lines before the first `---` divider)
+    # so Claude receives only the fable structure, not file documentation
+    if '---\n' in base_fable_raw:
+        base_fable = base_fable_raw[base_fable_raw.index('---\n'):]
+    else:
+        base_fable = base_fable_raw
     outcome = get_outcome(args)
 
     print(f"[FORGE] Injecting outcome: {outcome[:80]}{'...' if len(outcome) > 80 else ''}")
@@ -172,6 +178,14 @@ def main() -> None:
     # Step 1: Fill the fable template
     system_prompt = build_system_prompt(base_fable)
     filled_fable = call_claude(client, system_prompt, f"Outcome: {outcome}")
+
+    # Post-process: substitute any unfilled template variables
+    # {PROJECT_REPO} is left for the user to fill — substitute a sensible default
+    import re as _re
+    repo_guess = Path(args.output_dir).resolve().name
+    filled_fable = filled_fable.replace("{PROJECT_REPO}", f"samcolibri/{repo_guess}")
+    # Strip any remaining unfilled ALL_CAPS placeholders (shouldn't happen but be safe)
+    filled_fable = _re.sub(r'\{[A-Z_]{4,}\}', '[TBD]', filled_fable)
 
     print("[FORGE] Fable filled. Extracting metadata...")
 
