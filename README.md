@@ -1,6 +1,6 @@
-# FORGE × Hephaestus
+# FORGE × Hephaestus × agmsg
 
-> Define the outcome. FORGE runs the loop. Hephaestus governs every step.
+> Define the outcome. FORGE runs the loop. Hephaestus governs every step. agmsg connects every agent.
 
 **Not a project tool. An outcome execution OS with 99.26% operational robustness.**
 
@@ -31,6 +31,16 @@ Stormbreaker is a protocol from Hephaestus that puts every worker output through
 
 ## Architecture
 
+Three layers, each doing exactly one job:
+
+```
+FORGE          — outcome OS: defines what, runs the loop
+Hephaestus     — governs HOW each worker executes (Stormbreaker 99.26%)
+agmsg          — the nervous system: workers talk to each other + Sam
+```
+
+Full pipeline:
+
 ```
 OUTCOME (one sentence)
     ↓ inject.py → BASE_FABLE.md (CL4R1T4S soul doc)
@@ -38,7 +48,12 @@ OUTCOME (one sentence)
     ↓ [Sam signs off]
     ↓ spawner.py → loop.py (24/7 daemon)
          ↓
-    STORMBREAKER GATE (per worker)
+    AGMSG TEAM (forge-{project})
+    workers spawn as real agent sessions, communicate peer-to-peer
+         ↓
+    PARALLEL DISPATCH (SCOUT_1, SCOUT_2, SCOUT_3 run simultaneously)
+         ↓
+    STORMBREAKER GATE (per worker output)
     scope_lock → contract → failure_memory → verify_plan
     → evidence_loop → review_gate → outcome_ledger → final_gate
          ↓
@@ -49,7 +64,7 @@ OUTCOME (one sentence)
          ↓
     PUBLIC SAFETY SCAN (before Gate 2)
          ↓
-    HUMAN GATE 2 (Sam approves, nothing leaves without sign-off)
+    HUMAN GATE 2 (Sam receives agmsg notification in Claude Code, approves or rejects)
          ↓
     OUTCOME VALIDATOR (met? done : loop again)
          ↓
@@ -61,14 +76,73 @@ OUTCOME (one sentence)
 ## Install
 
 ```bash
-# Install Hephaestus runtimes
+# Everything in one command (installs Hephaestus + agmsg + all runtimes):
 curl -fsSL https://raw.githubusercontent.com/agentlas-ai/Hephaestus/v0.7.0/scripts/install-all-runtimes.sh | bash
 
-# Link FORGE as a Claude Code skill
+# Then install FORGE skill:
 ln -sf ~/projects/forge/skills/forge ~/.claude/skills/forge
 ```
 
 Then in any Claude Code session: `/forge:run`
+
+---
+
+## The agmsg team
+
+Every FORGE project runs as a real agmsg team (`forge-{project}`). Workers spawn as
+independent agent sessions and communicate peer-to-peer. Sam is a first-class team member.
+
+```
+forge-moreland team:
+  FORGE_LOOP → SCOUT_1:  "research Wake County Schools NC"
+  FORGE_LOOP → SCOUT_2:  "research Cumberland County Schools NC"  ← parallel
+  FORGE_LOOP → SCOUT_3:  "research Johnston County Schools NC"    ← parallel
+  SCOUT_1    → FORGE_LOOP: {account_brief, confidence: 0.92}
+  SCOUT_2    → FORGE_LOOP: {account_brief, confidence: 0.87}
+  SCOUT_3    → FORGE_LOOP: {account_brief, confidence: 0.91}
+  FORGE_LOOP → ENRICHER:   {accounts_batch: [...3 briefs...]}
+  ENRICHER   → FORGE_LOOP: {contacts_found: 7}
+  FORGE_LOOP → WRITER:     {brief + contacts for each account}
+  WRITER     → FORGE_LOOP: {sequences: [...3 sequences...]}
+  FORGE_LOOP → QA_SCORER:  {sequences to score}
+  QA_SCORER  → FORGE_LOOP: {scores: [9.1, 8.7, 9.3], all pass}
+  REPORTER   → SAM:        "🔔 Gate 2: 3 sequences ready for review"
+  SAM        → FORGE_LOOP: "approved 1,2,3"
+  FORGE_LOOP → REPORTER:   "loop continues"
+```
+
+Workers run on any agent runtime (Claude Code / Codex / AGY / Gemini). The agmsg bus
+is runtime-agnostic — a SCOUT running in Claude Code and a WRITER running in Codex
+communicate identically.
+
+---
+
+## Join a project as SAM
+
+Sam joins any FORGE project as team member SAM and receives Gate 2 approval requests
+directly in his Claude Code inbox.
+
+```bash
+# In Claude Code — join the forge team:
+/agmsg
+# Then: join team forge-{project}, name: SAM
+
+# Or from CLI:
+agmsg join --team forge-moreland --agent SAM
+```
+
+Gate 2 approval example (reply in inbox):
+```
+approved 1,2,3
+```
+or:
+```
+approved 1,3
+rejected 2 subject line too long
+```
+
+FORGE_LOOP reads SAM's replies via `engine/agmsg_bus.py → read_sam_approvals()` and
+continues the loop. Nothing leaves the system without SAM's explicit sign-off.
 
 ---
 
@@ -142,6 +216,12 @@ Low-risk tasks may skip to `final_gate`. All others run the full chain.
 | Local ontology runtime (`~/.agentlas/runtime/`) | SCOUT queries project docs before external search |
 | AGENTS.md generation | Multi-runtime routing cards for every worker |
 
+| agmsg component | File | Description |
+|-----------------|------|-------------|
+| Python bus bridge | `engine/agmsg_bus.py` | send / inbox / dispatch_parallel / collect_parallel / notify_sam / gate2_approval_request / read_sam_approvals |
+| AgmsgDispatcher | `engine/loop.py` | Parallel dispatch when agmsg available, sequential fallback otherwise |
+| Worker skill docs | `workers/skills/` | SCOUT / ENRICHER / WRITER / QA_SCORER / VALIDATOR / REPORTER / SAM / FORGE_LOOP — each spawnable as a real agmsg agent session |
+
 ---
 
 ## State machine
@@ -196,4 +276,4 @@ forge/
 
 ---
 
-*Built by Sam · Powered by Claude + Hephaestus · 2026*
+*Built by Sam · Powered by Claude + Hephaestus + agmsg · 2026*

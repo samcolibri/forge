@@ -404,6 +404,79 @@
       text-transform: uppercase;
     }
 
+    /* AGENT TEAM */
+    .team-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+      gap: 1rem;
+      margin-bottom: 2.5rem;
+    }
+    .team-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 1rem 1.1rem;
+      text-align: center;
+      transition: border-color 0.2s, transform 0.2s;
+    }
+    .team-card:hover { transform: translateY(-2px); }
+    .team-card.forge-loop { border-top: 3px solid var(--blue); }
+    .team-card.scout     { border-top: 3px solid var(--cyan); }
+    .team-card.enricher  { border-top: 3px solid var(--green); }
+    .team-card.writer    { border-top: 3px solid var(--purple); }
+    .team-card.qa        { border-top: 3px solid var(--orange); }
+    .team-card.validator { border-top: 3px solid var(--yellow); }
+    .team-card.reporter  { border-top: 3px solid var(--red); }
+    .team-card.sam       { border-top: 3px solid #f0abfc; border-style: dashed; }
+    .team-card-name {
+      font-family: monospace;
+      font-size: 0.8rem;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      margin-bottom: 0.3rem;
+    }
+    .team-card-role {
+      font-size: 0.75rem;
+      color: var(--muted);
+    }
+    .team-card.sam .team-card-name { color: #f0abfc; }
+    .team-card.sam .team-card-role { color: #d8b4fe; }
+
+    /* Sam-in-the-loop card */
+    .sam-card {
+      background: var(--surface2);
+      border: 1px solid #7c3aed;
+      border-radius: 12px;
+      padding: 1.5rem 2rem;
+      display: flex;
+      align-items: flex-start;
+      gap: 1.5rem;
+      flex-wrap: wrap;
+    }
+    .sam-card-icon { font-size: 2.5rem; line-height: 1; }
+    .sam-card-body { flex: 1; min-width: 200px; }
+    .sam-card-title { font-size: 1.1rem; font-weight: 700; color: #d8b4fe; margin-bottom: 0.4rem; }
+    .sam-card-desc { font-size: 0.875rem; color: var(--subtle); margin-bottom: 0.75rem; }
+    .sam-card-steps { list-style: none; padding: 0; }
+    .sam-card-steps li {
+      font-size: 0.85rem;
+      color: var(--text);
+      padding: 0.25rem 0;
+      display: flex;
+      align-items: baseline;
+      gap: 0.5rem;
+    }
+    .sam-card-steps li::before {
+      content: attr(data-step);
+      font-size: 0.65rem;
+      font-weight: 700;
+      color: #8b5cf6;
+      background: rgba(139,92,246,0.15);
+      border-radius: 4px;
+      padding: 0.1rem 0.4rem;
+      flex-shrink: 0;
+    }
+
     /* CLI */
     .cli-block {
       background: #060a14;
@@ -484,13 +557,14 @@
 
 <!-- NAV -->
 <nav>
-  <a class="nav-brand" href="#">FORGE <span>&#215; Hephaestus</span></a>
+  <a class="nav-brand" href="#">FORGE <span>&#215; Hephaestus &#215; agmsg</span></a>
   <ul class="nav-links">
     <li><a href="#stormbreaker">Stormbreaker</a></li>
     <li><a href="#architecture">Architecture</a></li>
     <li><a href="#projects">Projects</a></li>
     <li><a href="#how">How It Works</a></li>
     <li><a href="#workers">Workers</a></li>
+    <li><a href="#team">Agent Team</a></li>
     <li><a href="#loop">The Loop</a></li>
     <li><a href="#cli">CLI</a></li>
     <li><a href="https://github.com/samcolibri/forge" target="_blank">GitHub &rarr;</a></li>
@@ -502,8 +576,8 @@
   <div class="container">
     <p class="hero-eyebrow">samcolibri / forge</p>
     <h1 class="hero-title">FORGE</h1>
-    <p class="hero-x">&#215; Hephaestus</p>
-    <p class="hero-subtitle">Stormbreaker-governed &middot; Ontology-backed &middot; Multi-runtime</p>
+    <p class="hero-x">&#215; Hephaestus &#215; agmsg</p>
+    <p class="hero-subtitle">Stormbreaker-governed &middot; Ontology-backed &middot; Peer-connected &middot; Multi-runtime</p>
     <p class="hero-tagline">Define the outcome. <span>FORGE runs the loop.</span></p>
     <p class="hero-robustness">Not a project tool. An outcome execution OS with <strong>99.26% operational robustness.</strong></p>
     <div class="pills">
@@ -513,6 +587,7 @@
       <span class="pill green">24/7 Loop</span>
       <span class="pill">Human Gates</span>
       <span class="pill cyan">Multi-runtime</span>
+      <span class="pill" style="border-color:#f0abfc;color:#f0abfc;background:rgba(240,171,252,0.08);">agmsg Peer Bus</span>
     </div>
   </div>
 </section>
@@ -839,6 +914,115 @@ hourly email
 
 <div class="divider"></div>
 
+<!-- AGENT TEAM -->
+<section id="team">
+  <div class="container">
+    <p class="section-label">agmsg Integration</p>
+    <h2 class="section-title">The Agent Team</h2>
+    <p class="section-desc">Every FORGE project runs as a real agmsg team. Workers spawn as independent agent sessions, communicate peer-to-peer, and Sam joins as a first-class team member who receives Gate 2 requests directly in Claude Code.</p>
+
+    <!-- Team member cards -->
+    <div class="team-grid">
+      <div class="team-card forge-loop">
+        <div class="team-card-name" style="color:var(--blue);">FORGE_LOOP</div>
+        <div class="team-card-role">Orchestrator</div>
+      </div>
+      <div class="team-card scout">
+        <div class="team-card-name" style="color:var(--cyan);">SCOUT &times;3</div>
+        <div class="team-card-role">Research (parallel)</div>
+      </div>
+      <div class="team-card enricher">
+        <div class="team-card-name" style="color:var(--green);">ENRICHER</div>
+        <div class="team-card-role">Contact enrichment</div>
+      </div>
+      <div class="team-card writer">
+        <div class="team-card-name" style="color:var(--purple);">WRITER</div>
+        <div class="team-card-role">Sequence drafting</div>
+      </div>
+      <div class="team-card qa">
+        <div class="team-card-name" style="color:var(--orange);">QA_SCORER</div>
+        <div class="team-card-role">Quality gate (8.5/10)</div>
+      </div>
+      <div class="team-card validator">
+        <div class="team-card-name" style="color:var(--yellow);">VALIDATOR</div>
+        <div class="team-card-role">Data integrity</div>
+      </div>
+      <div class="team-card reporter">
+        <div class="team-card-name" style="color:var(--red);">REPORTER</div>
+        <div class="team-card-role">Hourly updates</div>
+      </div>
+      <div class="team-card sam">
+        <div class="team-card-name">SAM</div>
+        <div class="team-card-role">Human approver</div>
+      </div>
+    </div>
+
+    <!-- Sequence diagram: one full parallel batch -->
+    <p class="section-label" style="margin-top:1rem;">Message Flow</p>
+    <h3 class="section-title" style="font-size:1.5rem;">One parallel batch, start to finish</h3>
+    <p class="section-desc">Three SCOUTs run simultaneously. FORGE_LOOP collects all results before dispatching to WRITER. Sam approves at Gate 2 — then the loop continues.</p>
+    <div class="diagram-wrap">
+      <div class="mermaid">
+sequenceDiagram
+    participant FL as FORGE_LOOP
+    participant S1 as SCOUT_1
+    participant S2 as SCOUT_2
+    participant EN as ENRICHER
+    participant WR as WRITER
+    participant QA as QA_SCORER
+    participant RP as REPORTER
+    participant SAM as SAM
+
+    FL->>S1: research Wake County Schools NC
+    FL->>S2: research Cumberland County Schools NC
+    Note over S1,S2: parallel dispatch via agmsg
+
+    S1-->>FL: account_brief A (confidence 0.92)
+    S2-->>FL: account_brief B (confidence 0.87)
+
+    FL->>EN: enrich contacts for A, B
+    EN-->>FL: contacts found (3 of 4)
+
+    FL->>WR: draft sequence A
+    FL->>WR: draft sequence B
+    WR-->>FL: sequence A
+    WR-->>FL: sequence B
+
+    FL->>QA: score sequence A, B
+    QA-->>FL: A=9.1 pass, B=8.7 pass
+
+    FL->>RP: 2 sequences passed all 8 gates
+    RP->>SAM: Gate 2 — 2 sequences ready for review
+
+    SAM-->>FL: approved 1,2
+
+    FL->>RP: loop continues — 2 sequences exported
+      </div>
+    </div>
+
+    <!-- Sam in the loop card -->
+    <div style="margin-top:2.5rem;">
+      <p class="section-label">Human in the Team</p>
+      <h3 class="section-title" style="font-size:1.5rem;">Sam joins as SAM</h3>
+      <div class="sam-card" style="margin-top:1rem;">
+        <div class="sam-card-icon">&#128100;</div>
+        <div class="sam-card-body">
+          <div class="sam-card-title">Gate 2 arrives in Claude Code inbox</div>
+          <div class="sam-card-desc">Sam is a real agmsg team member. REPORTER sends Gate 2 approval requests directly to his Claude Code session. No email, no dashboard — the message appears in the active session.</div>
+          <ul class="sam-card-steps">
+            <li data-step="1">Join the team: <code style="color:var(--green);font-size:0.8rem;">/agmsg</code> &rarr; join team <code style="font-size:0.8rem;">forge-moreland</code>, name <code style="font-size:0.8rem;">SAM</code></li>
+            <li data-step="2">Check inbox: <code style="color:var(--green);font-size:0.8rem;">/agmsg inbox</code> or wait for push notification</li>
+            <li data-step="3">Approve: reply <code style="color:var(--green);font-size:0.8rem;">approved 1,2,3</code> &mdash; or reject with a reason</li>
+            <li data-step="4">FORGE_LOOP reads the reply and the loop continues automatically</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="divider"></div>
+
 <!-- THE LOOP STATE MACHINE -->
 <section id="loop">
   <div class="container">
@@ -912,7 +1096,7 @@ stateDiagram-v2
 <!-- FOOTER -->
 <footer>
   <p style="margin-bottom:0.5rem;">
-    <strong style="color:var(--text);">FORGE</strong> &times; <strong style="color:var(--green);">Hephaestus</strong> &mdash; Outcome Execution OS
+    <strong style="color:var(--text);">FORGE</strong> &times; <strong style="color:var(--green);">Hephaestus</strong> &times; <strong style="color:#f0abfc;">agmsg</strong> &mdash; Outcome Execution OS
   </p>
   <p>
     <a href="https://github.com/samcolibri/forge" target="_blank">github.com/samcolibri/forge</a>

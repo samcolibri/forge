@@ -959,6 +959,103 @@ def seed_queue_if_empty(conn: sqlite3.Connection, arch: dict) -> None:
 # ---------------------------------------------------------------------------
 
 
+# ---------------------------------------------------------------------------
+# agmsg parallel dispatcher
+# ---------------------------------------------------------------------------
+
+
+class AgmsgDispatcher:
+    """
+    Parallel worker dispatch via agmsg messaging bus.
+    Falls back to sequential direct dispatch if agmsg unavailable.
+
+    When agmsg IS available, worker tasks are fanned out via the bus so
+    multiple Claude Code / Codex / AGY sessions can process them concurrently.
+    When agmsg is NOT available the existing StormBreakerGate sequential path
+    is used transparently — the loop continues to work with no agmsg install.
+
+    Usage:
+        dispatcher = AgmsgDispatcher("moreland-sdr", agmsg_available=True)
+        results = dispatcher.dispatch_batch("SCOUT", tasks, execute_fn, stormbreaker)
+    """
+
+    def __init__(self, project_name: str, agmsg_available: bool) -> None:
+        self.team = f"forge-{project_name.lstrip('forge-').lstrip('forge-')}"
+        # Normalise: strip any leading "forge-" duplicates
+        if not self.team.startswith("forge-"):
+            self.team = f"forge-{project_name}"
+        self.available = agmsg_available
+        self.collector_id = "FORGE_LOOP"
+
+    def dispatch_batch(
+        self,
+        worker_name: str,
+        tasks: list[dict],
+        execute_fn: Callable[[dict], str],
+        stormbreaker: StormBreakerGate,
+    ) -> list[dict]:
+        """
+        Dispatch a batch of tasks to workers.
+
+        With agmsg:    fans all tasks out in parallel, collects results.
+        Without agmsg: runs sequentially using existing StormBreakerGate.
+
+        Returns list of result dicts (each has at minimum 'body' and 'from' keys
+        when coming from agmsg; or the raw output string wrapped in a dict when
+        coming from the sequential path).
+        """
+        if self.available:
+            return self._dispatch_parallel(worker_name, tasks)
+        else:
+            return self._dispatch_sequential(worker_name, tasks, execute_fn, stormbreaker)
+
+    def _dispatch_parallel(self, worker_name: str, tasks: list[dict]) -> list[dict]:
+        """Send all tasks at once via agmsg, collect results concurrently."""
+        from engine.agmsg_bus import dispatch_parallel, collect_parallel
+        worker_ids = dispatch_parallel(self.team, tasks, worker_name, self.collector_id)
+        responses = collect_parallel(self.team, self.collector_id, worker_ids, timeout=300)
+        return [r for r in responses.values() if r is not None]
+
+    def _dispatch_sequential(
+        self,
+        worker_name: str,
+        tasks: list[dict],
+        execute_fn: Callable[[dict], str],
+        stormbreaker: StormBreakerGate,
+    ) -> list[dict]:
+        """Original sequential execution path (agmsg not available or disabled)."""
+        results = []
+        risk = resolve_risk_tier(worker_name)
+        for task in tasks:
+            try:
+                output = stormbreaker.run(worker_name, task, execute_fn, risk)
+                results.append({"body": output, "from": worker_name, "timestamp": now_iso()})
+            except RuntimeError as e:
+                log.warning(f"[FORGE] {worker_name} escalated: {e}")
+        return results
+
+    def notify_gate2(self, pending_outputs: list[dict]) -> bool:
+        """
+        Notify SAM of pending Gate 2 approvals via agmsg.
+        No-op (returns False) when agmsg is unavailable.
+        """
+        if not self.available:
+            return False
+        from engine.agmsg_bus import gate2_approval_request
+        return gate2_approval_request(self.team, pending_outputs)
+
+    def check_sam_approvals(self) -> list[dict]:
+        """
+        Check if SAM has responded with approvals via agmsg.
+        Returns empty list when agmsg is unavailable.
+        """
+        if not self.available:
+            return []
+        from engine.agmsg_bus import read_sam_approvals
+        return read_sam_approvals(self.team)
+
+
+
 async def run_loop(arch: dict, conn: sqlite3.Connection, dry_run: bool, once: bool) -> None:
     workers: list[dict] = arch.get("workers", [])
     qa_cfg: dict = arch.get("qa", {})
@@ -974,6 +1071,22 @@ async def run_loop(arch: dict, conn: sqlite3.Connection, dry_run: bool, once: bo
 
     db_path_str = arch.get("loop", {}).get("state_store", "./forge_state.db")
     stormbreaker = StormBreakerGate(db_path=db_path_str)
+
+    # ------------------------------------------------------------------
+    # agmsg dispatcher — parallel fan-out when agmsg is installed
+    # ------------------------------------------------------------------
+    try:
+        from engine.agmsg_bus import is_available as _agmsg_available
+        _agmsg_ok = _agmsg_available()
+    except ImportError:
+        _agmsg_ok = False
+
+    _project_name = arch.get("system", {}).get("name", "unknown")
+    dispatcher = AgmsgDispatcher(_project_name, agmsg_available=_agmsg_ok)
+    if _agmsg_ok:
+        log.info(f"[FORGE] agmsg bus ONLINE — team: {dispatcher.team}")
+    else:
+        log.info("[FORGE] agmsg bus OFFLINE — sequential dispatch mode")
 
     seed_queue_if_empty(conn, arch)
 
@@ -1157,12 +1270,58 @@ async def run_loop(arch: dict, conn: sqlite3.Connection, dry_run: bool, once: bo
                         conn, item_id, "pending_approval", worker_name,
                         f"gate: {gate.get('id')}",
                     )
+                    # Notify SAM via agmsg for async Gate 2 approval
+                    pending_item = {
+                        "id": str(item_id),
+                        "account": item_data.get("account", item_data.get("source", f"item-{item_id}")),
+                        "type": gate.get("id", "output"),
+                        "qa_score": conn.execute(
+                            "SELECT qa_score FROM items WHERE id=?", (item_id,)
+                        ).fetchone()["qa_score"] or 0.0,
+                    }
+                    dispatcher.notify_gate2([pending_item])
                     pipeline_failed = True
                     break
 
             if not pipeline_failed:
                 transition(conn, item_id, "exported", "loop")
                 transition(conn, item_id, "done", "loop", "pipeline complete")
+
+        # ----------------------------------------------------------------
+        # Check SAM inbox for Gate 2 approval responses (non-blocking)
+        # ----------------------------------------------------------------
+        sam_approvals = dispatcher.check_sam_approvals()
+        for approval in sam_approvals:
+            action = approval.get("action", "")
+            ids = approval.get("item_ids", [])
+            feedback = approval.get("feedback", "")
+            if action == "approved":
+                log.info(f"[FORGE] SAM approved items: {ids}")
+                for item_id_str in ids:
+                    if item_id_str == "all":
+                        # Approve all pending_approval items
+                        pending_rows = conn.execute(
+                            "SELECT id FROM items WHERE state='pending_approval'"
+                        ).fetchall()
+                        for row in pending_rows:
+                            transition(conn, row["id"], "approved", "SAM", "Gate 2 approved")
+                    else:
+                        try:
+                            approved_id = int(item_id_str)
+                            transition(conn, approved_id, "approved", "SAM", "Gate 2 approved")
+                        except (ValueError, TypeError):
+                            log.warning(f"[FORGE] SAM approval: invalid item id {item_id_str!r}")
+            elif action == "rejected":
+                log.warning(f"[FORGE] SAM rejected items {ids}: {feedback}")
+                for item_id_str in ids:
+                    try:
+                        rejected_id = int(item_id_str)
+                        transition(
+                            conn, rejected_id, "failed", "SAM",
+                            f"Gate 2 rejected: {feedback[:200]}",
+                        )
+                    except (ValueError, TypeError):
+                        log.warning(f"[FORGE] SAM rejection: invalid item id {item_id_str!r}")
 
         if once:
             log.info("[FORGE] --once flag set — exiting after first batch")
