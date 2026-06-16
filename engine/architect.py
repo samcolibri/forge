@@ -6,6 +6,7 @@ Usage:
   python3 architect.py                    # reads ./OUTCOME.md
   python3 architect.py --outcome path     # reads specific file
   python3 architect.py --print-only       # print architecture, don't write files
+  python3 architect.py --output-dir path  # write artefacts to a different directory
 """
 
 import argparse
@@ -176,8 +177,196 @@ def build_worker_contract_prompt(worker: dict, system_meta: dict) -> str:
           # each tool with: name, description, when_to_use
           {chr(10).join(['- name: ' + t for t in (worker.get('tools') or ['none'])])}
 
+        routing_card:
+          triggers:
+            # 2-4 short phrases that describe when a router should send work to this worker
+          anti_triggers:
+            # 2-4 short phrases describing when NOT to route here (tasks this worker must NOT handle)
+          capabilities:
+            # list of capability identifiers this worker provides (e.g. web_search, contact_discovery)
+          risk_profile: (low | medium | high)
+          memory_behavior:
+            reads:
+              # list of memory/cache keys this worker reads (or [] if none)
+            writes:
+              # list of output artifacts this worker writes (e.g. account_brief.json)
+            durable_writes: false   # set true only for workers that need Curator approval
+          evidence_requirement:
+            # Stormbreaker requirements: list what each produced fact must include
+            - "source_url for every fact"
+            - "confidence_score >= 0.7"
+
         RULES: Return ONLY valid YAML. No markdown, no preamble.
     """).strip()
+
+
+# ---------------------------------------------------------------------------
+# Hephaestus integration helpers
+# ---------------------------------------------------------------------------
+
+
+def _infer_risk_tier(worker: dict) -> str:
+    """
+    Heuristically assign a Stormbreaker risk tier (low / medium / high) based
+    on the worker's declared tools and role keywords.
+
+    Rules (first match wins):
+    - high:   any of send_email, send_sms, crm_update, crm_write, post_webhook,
+              execute_code, code_exec, db_write
+    - medium: any of web_search, http_request, crm_lookup, file_write, api_call
+    - low:    everything else (read-only, local computation)
+    """
+    high_tools = {"send_email", "send_sms", "crm_update", "crm_write",
+                  "post_webhook", "execute_code", "code_exec", "db_write"}
+    medium_tools = {"web_search", "http_request", "crm_lookup", "file_write", "api_call"}
+
+    tools = {str(t).lower() for t in (worker.get("tools") or [])}
+    if tools & high_tools:
+        return "high"
+    if tools & medium_tools:
+        return "medium"
+    return "low"
+
+
+def generate_agents_md(arch_data: dict, output_dir: Path) -> Path:
+    """
+    Write AGENTS.md to output_dir.
+
+    This is the Hephaestus standard contract file that lets FORGE projects work
+    with Claude Code, Codex, Gemini CLI, Cursor, and Antigravity out of the box.
+
+    Args:
+        arch_data:  Parsed ARCHITECTURE.yaml dict.
+        output_dir: Project root directory (AGENTS.md written here).
+
+    Returns:
+        Path to the written AGENTS.md.
+    """
+    system = arch_data.get("system", {})
+    workers = arch_data.get("workers", [])
+    system_name = system.get("name", "FORGE SYSTEM")
+    outcome = system.get("outcome", "See OUTCOME.md for the full outcome statement.")
+
+    # Worker fleet table rows
+    fleet_rows: list[str] = []
+    stormbreaker_rows: list[str] = []
+    for w in workers:
+        name = w.get("name", "WORKER")
+        role = w.get("role", "")
+        model = w.get("model", "claude-sonnet-4-6")
+        risk = _infer_risk_tier(w)
+        fleet_rows.append(f"| {name} | {role} | {model} | {risk} |")
+        stormbreaker_rows.append(f"- **{name}**: risk tier `{risk}`")
+
+    fleet_table = "\n".join(fleet_rows) if fleet_rows else "| (none) | | | |"
+    stormbreaker_list = "\n".join(stormbreaker_rows) if stormbreaker_rows else "- (none)"
+
+    content = textwrap.dedent(f"""\
+        # AGENTS.md — {system_name}
+
+        ## What this agent does
+
+        {outcome}
+
+        ## Global command
+
+        `/forge:run` in any Claude Code session from this directory
+
+        ## Worker fleet
+
+        | Worker | Role | Model | Risk tier |
+        | ------ | ---- | ----- | --------- |
+        {fleet_table}
+
+        ## Runtime adapters
+
+        | Runtime | Command |
+        | ------- | ------- |
+        | Claude Code | `/forge:run` |
+        | Codex | `/prompts:forge-run` |
+        | Gemini CLI | `/hephaestus`, then `/forge:run` |
+        | Antigravity | `/forge:run` |
+        | Terminal | `python3 ~/projects/forge/engine/spawner.py` |
+
+        ## Memory governance
+
+        - Durable memory requires Curator approval (see `forge_state.db` → `memory_candidates` table)
+        - Workers write memory candidates, not durable facts
+        - Sam approves promotion via `/forge:approve`
+
+        ## Safety boundary
+
+        - No secrets in outputs
+        - No autonomous external sends
+        - All Gate 2 outputs scanned by `engine/safety_check.py` before release
+
+        ## Stormbreaker risk tiers
+
+        {stormbreaker_list}
+    """)
+
+    agents_path = output_dir / "AGENTS.md"
+    agents_path.write_text(content)
+    return agents_path
+
+
+def generate_ontology_config(project_dir: Path, arch_data: dict) -> None:
+    """
+    Write the Hephaestus ontology configuration files to project_dir.
+
+    Creates:
+      .agentlas/ontology-sources.json  — tells the ontology runtime what to index
+      .agentlas/ontology-inbox/        — drop zone for Sam to add source documents
+
+    Worker-specific source entries are inferred from common FORGE data paths and
+    the worker names declared in ARCHITECTURE.yaml.
+
+    Args:
+        project_dir: Absolute path to the FORGE project root.
+        arch_data:   Parsed ARCHITECTURE.yaml dict.
+    """
+    agentlas_dir = project_dir / ".agentlas"
+    agentlas_dir.mkdir(parents=True, exist_ok=True)
+
+    inbox_dir = agentlas_dir / "ontology-inbox"
+    inbox_dir.mkdir(exist_ok=True)
+
+    # Base sources always present
+    sources: list[dict] = [
+        {"path": "OUTCOME.md", "scope": "internal", "agent": "all"},
+        {"path": "ARCHITECTURE.yaml", "scope": "internal", "agent": "all"},
+        {"path": "data/knowledge/", "scope": "internal", "agent": "all"},
+    ]
+
+    # Per-worker sources inferred from conventional FORGE data paths
+    workers = arch_data.get("workers", [])
+    worker_source_map: dict[str, str] = {
+        "SCOUT":    "data/accounts.csv",
+        "ENRICHER": "data/accounts.csv",
+        "BRIEFER":  "data/knowledge/",
+        "RESEARCHER": "data/knowledge/",
+        "WRITER":   "data/templates/",
+        "REVIEWER": "data/outputs/",
+        "CURATOR":  "data/outputs/",
+    }
+    seen_paths: set[str] = {s["path"] for s in sources}
+    for w in workers:
+        name = str(w.get("name", "")).upper()
+        path = worker_source_map.get(name)
+        if path and path not in seen_paths:
+            sources.append({"path": path, "scope": "internal", "agent": name})
+            seen_paths.add(path)
+
+    config = {
+        "sources": sources,
+        "ontology_runtime": "~/.agentlas/runtime/current/bin/ontology",
+        "query_hook": "bin/ontology query \"{query}\" --agent {worker_name}",
+    }
+
+    sources_path = agentlas_dir / "ontology-sources.json"
+    sources_path.write_text(json.dumps(config, indent=2))
+    print(f"[FORGE] Ontology config written: .agentlas/ontology-sources.json")
+    print(f"[FORGE] Ontology inbox ready:    .agentlas/ontology-inbox/ (drop source docs here)")
 
 
 def print_summary_table(workers: list[dict]) -> None:
@@ -264,7 +453,14 @@ def main() -> None:
     arch_path.write_text(arch_yaml_raw)
     print(f"[FORGE] ARCHITECTURE.yaml written to {arch_path.resolve()}")
 
-    # Generate individual worker contracts
+    # --- Hephaestus: AGENTS.md ---
+    agents_path = generate_agents_md(arch_data, output_dir)
+    print(f"[FORGE] AGENTS.md written to {agents_path.resolve()}")
+
+    # --- Hephaestus: ontology config + inbox ---
+    generate_ontology_config(output_dir, arch_data)
+
+    # Generate individual worker contracts (with routing_card section)
     system_meta = arch_data.get("system", {})
     for worker in workers:
         worker_name = str(worker.get("name", "worker")).lower()
@@ -289,6 +485,7 @@ def main() -> None:
         print(f"[FORGE] Contract written: workers/{worker_name}.yaml")
 
     print(f"\n[FORGE] Architecture complete. {len(workers)} workers designed.")
+    print(f"[FORGE] Hephaestus artefacts: AGENTS.md + .agentlas/ written.")
     print(f"[FORGE] Next step: python3 ~/projects/forge/engine/spawner.py")
 
 

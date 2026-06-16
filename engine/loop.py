@@ -23,7 +23,7 @@ import textwrap
 import time
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable
 
 import yaml
 
@@ -70,6 +70,37 @@ STATES = [
 ]
 
 # ---------------------------------------------------------------------------
+# Worker risk tier mapping
+# Keys are lowercase worker name fragments; first match wins.
+# ---------------------------------------------------------------------------
+
+WORKER_RISK_TIERS: dict[str, str] = {
+    "reporter":     "low",
+    "briefer":      "medium",
+    "researcher":   "medium",
+    "scout":        "medium",
+    "enricher":     "medium",
+    "validator":    "medium",
+    "storyboarder": "medium",
+    "scriptwriter": "high",
+    "writer":       "high",
+    "critic":       "high",
+    "qa_scorer":    "high",
+    "scorer":       "high",
+    "producer":     "high",
+}
+
+
+def resolve_risk_tier(worker_name: str) -> str:
+    """Return the Stormbreaker risk tier for a worker name (case-insensitive fragment match)."""
+    name_lower = worker_name.lower()
+    for fragment, tier in WORKER_RISK_TIERS.items():
+        if fragment in name_lower:
+            return tier
+    return "medium"  # default
+
+
+# ---------------------------------------------------------------------------
 # Database
 # ---------------------------------------------------------------------------
 
@@ -114,6 +145,26 @@ def init_db(db_path: Path) -> sqlite3.Connection:
         CREATE TABLE IF NOT EXISTS loop_meta (
             key   TEXT PRIMARY KEY,
             value TEXT
+        );
+
+        CREATE TABLE IF NOT EXISTS stormbreaker_ledger (
+            id          INTEGER PRIMARY KEY AUTOINCREMENT,
+            worker_name TEXT NOT NULL,
+            task_id     TEXT,
+            gate_name   TEXT NOT NULL,
+            gate_result TEXT NOT NULL,
+            passed      BOOLEAN NOT NULL DEFAULT 1,
+            evidence    TEXT,
+            created_at  TEXT NOT NULL DEFAULT (datetime('now'))
+        );
+
+        CREATE TABLE IF NOT EXISTS failure_patterns (
+            id                  INTEGER PRIMARY KEY AUTOINCREMENT,
+            worker_name         TEXT NOT NULL,
+            pattern_description TEXT NOT NULL,
+            occurrence_count    INTEGER DEFAULT 1,
+            last_seen           TEXT,
+            mitigation          TEXT
         );
     """)
     conn.commit()
@@ -162,6 +213,524 @@ def append_worker_log(conn: sqlite3.Connection, item_id: int, worker_name: str, 
 
 
 # ---------------------------------------------------------------------------
+# Hephaestus Stormbreaker — 8-gate execution protocol
+# ---------------------------------------------------------------------------
+
+
+class StormBreakerGate:
+    """
+    Hephaestus Stormbreaker execution protocol — 8 gates per work item.
+
+    Risk tiers:
+      LOW    (REPORTER):                scope_lock + final_gate
+      MEDIUM (SCOUT, ENRICHER, etc.):   + issue_contract + failure_memory
+                                          + evidence_loop + outcome_ledger
+      HIGH   (WRITER, PRODUCER, etc.):  all 8 gates
+    """
+
+    RISK_TIERS: dict[str, list[str]] = {
+        "low": [
+            "scope_lock",
+            "final_gate",
+        ],
+        "medium": [
+            "scope_lock",
+            "issue_contract",
+            "failure_memory",
+            "evidence_loop",
+            "outcome_ledger",
+            "final_gate",
+        ],
+        "high": [
+            "scope_lock",
+            "issue_contract",
+            "failure_memory",
+            "verifier_first_plan",
+            "evidence_loop",
+            "review_gate",
+            "outcome_ledger",
+            "final_gate",
+        ],
+    }
+
+    def __init__(self, db_path: str) -> None:
+        self.db_path = db_path
+
+    # ------------------------------------------------------------------
+    # Public entry point
+    # ------------------------------------------------------------------
+
+    def run(
+        self,
+        worker_name: str,
+        task: dict,
+        execute_fn: Callable[[dict], str],
+        risk_tier: str = "medium",
+    ) -> str:
+        """
+        Run a worker through the Stormbreaker protocol.
+
+        Returns the worker output string, or raises RuntimeError on
+        review_gate block or final_gate failure.
+        """
+        gates = self.RISK_TIERS.get(risk_tier, self.RISK_TIERS["medium"])
+        ledger: dict[str, Any] = {
+            "worker": worker_name,
+            "task_id": str(task.get("id", "")),
+            "gates": {},
+            "evidence": [],
+        }
+
+        log.info(f"[Stormbreaker] {worker_name} | tier={risk_tier} | gates={gates}")
+
+        # Gate 1: scope_lock
+        if "scope_lock" in gates:
+            ledger["gates"]["scope_lock"] = self._scope_lock(worker_name, task)
+
+        # Gate 2: issue_contract
+        if "issue_contract" in gates:
+            ledger["gates"]["issue_contract"] = self._issue_contract(worker_name, task)
+
+        # Gate 3: failure_memory
+        if "failure_memory" in gates:
+            ledger["gates"]["failure_memory"] = self._check_failure_memory(worker_name, task)
+
+        # Gate 4: verifier_first_plan
+        if "verifier_first_plan" in gates:
+            ledger["gates"]["verifier_first_plan"] = self._make_verifier_plan(worker_name, task)
+
+        # Gate 5: evidence_loop (actual execution with bounded retries)
+        result: str
+        if "evidence_loop" in gates:
+            result, evidence = self._evidence_loop(execute_fn, task, max_retries=2)
+            ledger["evidence"] = evidence
+        else:
+            result = execute_fn(task)
+
+        # Gate 6: review_gate
+        if "review_gate" in gates:
+            review = self._review_gate(worker_name, task, result)
+            ledger["gates"]["review_gate"] = review
+            if review.get("blocked"):
+                self._write_ledger(ledger)
+                raise RuntimeError(
+                    f"Stormbreaker review_gate blocked: {review.get('reason')}"
+                )
+
+        # Gate 7: outcome_ledger
+        if "outcome_ledger" in gates:
+            ledger["gates"]["outcome_ledger"] = self._build_outcome_ledger(
+                worker_name, task, result, ledger["evidence"]
+            )
+
+        # Gate 8: final_gate
+        if "final_gate" in gates:
+            final = self._final_gate(worker_name, task, result, ledger)
+            ledger["gates"]["final_gate"] = final
+            if not final.get("passed"):
+                self._write_ledger(ledger)
+                raise RuntimeError(
+                    f"Stormbreaker final_gate failed: {final.get('blocker')}"
+                )
+
+        self._write_ledger(ledger)
+        return result
+
+    # ------------------------------------------------------------------
+    # Gate implementations
+    # ------------------------------------------------------------------
+
+    def _scope_lock(self, worker_name: str, task: dict) -> dict:
+        """
+        Gate 1 — Restate task ownership, boundaries, and exclusions before
+        touching anything. Prevents scope creep from the first moment.
+        """
+        task_id = str(task.get("id", ""))
+        outcome = task.get("outcome") or task.get("source", "")
+        result = {
+            "gate": "scope_lock",
+            "worker": worker_name,
+            "task_id": task_id,
+            "task_summary": str(task)[:400],
+            "ownership": worker_name,
+            "boundaries": f"Worker {worker_name} processes task {task_id} only.",
+            "exclusions": "Must not modify items owned by other workers.",
+            "outcome_restated": str(outcome)[:200],
+            "ts": now_iso(),
+        }
+        log.debug(f"[Stormbreaker/scope_lock] {worker_name}:{task_id} locked.")
+        self._persist_gate(worker_name, task_id, "scope_lock", result, True)
+        return result
+
+    def _issue_contract(self, worker_name: str, task: dict) -> dict:
+        """
+        Gate 2 — Extract: what MUST change, what MUST NOT change,
+        affected files / fields, edge cases.
+        """
+        task_id = str(task.get("id", ""))
+        result = {
+            "gate": "issue_contract",
+            "worker": worker_name,
+            "task_id": task_id,
+            "must_change": f"Produce output for task {task_id} as specified.",
+            "must_not_change": "Items in states other than 'queued'.",
+            "affected_keys": list(task.keys()),
+            "edge_cases": [
+                "Empty input data",
+                "Upstream worker failure leaving partial output",
+                "Timeout during generation",
+            ],
+            "ts": now_iso(),
+        }
+        log.debug(f"[Stormbreaker/issue_contract] {worker_name}:{task_id} contracted.")
+        self._persist_gate(worker_name, task_id, "issue_contract", result, True)
+        return result
+
+    def _check_failure_memory(self, worker_name: str, task: dict) -> dict:
+        """
+        Gate 3 — Load known failure patterns for this worker type from the
+        failure_patterns table and surface any relevant mitigations.
+        """
+        task_id = str(task.get("id", ""))
+        patterns: list[dict] = []
+        try:
+            conn = sqlite3.connect(self.db_path)
+            conn.row_factory = sqlite3.Row
+            rows = conn.execute(
+                "SELECT * FROM failure_patterns WHERE worker_name=? ORDER BY occurrence_count DESC LIMIT 5",
+                (worker_name,),
+            ).fetchall()
+            patterns = [dict(r) for r in rows]
+            conn.close()
+        except Exception as exc:
+            log.debug(f"[Stormbreaker/failure_memory] DB read error (non-fatal): {exc}")
+
+        result = {
+            "gate": "failure_memory",
+            "worker": worker_name,
+            "task_id": task_id,
+            "known_patterns": patterns,
+            "pattern_count": len(patterns),
+            "advisory": (
+                f"Found {len(patterns)} historical failure pattern(s) for {worker_name}. "
+                "Review mitigations before proceeding."
+                if patterns
+                else f"No known failure patterns for {worker_name}."
+            ),
+            "ts": now_iso(),
+        }
+        log.debug(f"[Stormbreaker/failure_memory] {worker_name}:{task_id} — {len(patterns)} patterns.")
+        self._persist_gate(worker_name, task_id, "failure_memory", result, True)
+        return result
+
+    def _make_verifier_plan(self, worker_name: str, task: dict) -> dict:
+        """
+        Gate 4 — Define verification commands / criteria BEFORE execution starts.
+        Forces explicit success criteria up-front (HIGH risk only).
+        """
+        task_id = str(task.get("id", ""))
+        result = {
+            "gate": "verifier_first_plan",
+            "worker": worker_name,
+            "task_id": task_id,
+            "verification_criteria": [
+                "Output is non-empty string",
+                "Output does not begin with '[STUB]' or '[DRY-RUN]'",
+                "Output does not contain raw Python tracebacks",
+                "Output length > 20 characters",
+            ],
+            "verification_commands": [
+                "assert len(output) > 20",
+                "assert not output.startswith('[STUB]')",
+                "assert 'Traceback' not in output",
+            ],
+            "ts": now_iso(),
+        }
+        log.debug(f"[Stormbreaker/verifier_first_plan] {worker_name}:{task_id} plan set.")
+        self._persist_gate(worker_name, task_id, "verifier_first_plan", result, True)
+        return result
+
+    def _evidence_loop(
+        self,
+        execute_fn: Callable[[dict], str],
+        task: dict,
+        max_retries: int = 2,
+    ) -> tuple[str, list[dict]]:
+        """
+        Gate 5 — Bounded execution with evidence logged per attempt.
+        Returns (final_output, evidence_list). Never raises.
+        """
+        evidence: list[dict] = []
+        last_output = ""
+        for attempt in range(max_retries + 1):
+            attempt_ts = now_iso()
+            try:
+                output = execute_fn(task)
+                evidence.append({
+                    "attempt": attempt + 1,
+                    "ts": attempt_ts,
+                    "success": True,
+                    "output_preview": output[:300],
+                })
+                log.debug(f"[Stormbreaker/evidence_loop] attempt {attempt + 1} succeeded.")
+                return output, evidence
+            except Exception as exc:
+                evidence.append({
+                    "attempt": attempt + 1,
+                    "ts": attempt_ts,
+                    "success": False,
+                    "error": str(exc)[:300],
+                })
+                log.warning(
+                    f"[Stormbreaker/evidence_loop] attempt {attempt + 1} failed: {exc}"
+                )
+                last_output = f"[evidence_loop error attempt {attempt + 1}] {str(exc)[:200]}"
+        return last_output, evidence
+
+    def _review_gate(self, worker_name: str, task: dict, result: str) -> dict:
+        """
+        Gate 6 — Check for scope drift, destructive changes, security exposure.
+        Returns dict with 'blocked' bool and 'reason' if blocked (HIGH risk only).
+        """
+        task_id = str(task.get("id", ""))
+        findings: list[str] = []
+        blocked = False
+        reason = ""
+
+        # Heuristic checks on the output string
+        danger_phrases = [
+            "DROP TABLE", "DELETE FROM", "rm -rf", "os.remove",
+            "shutil.rmtree", "subprocess.run([\"rm\"",
+            "password", "secret", "api_key", "private_key",
+        ]
+        for phrase in danger_phrases:
+            if phrase.lower() in result.lower():
+                findings.append(f"Potentially dangerous pattern detected: '{phrase}'")
+
+        if len(result) > 50_000:
+            findings.append(f"Output suspiciously large ({len(result)} chars) — possible runaway generation")
+
+        if findings:
+            blocked = True
+            reason = "; ".join(findings)
+
+        gate_result = {
+            "gate": "review_gate",
+            "worker": worker_name,
+            "task_id": task_id,
+            "blocked": blocked,
+            "reason": reason,
+            "findings": findings,
+            "output_length": len(result),
+            "ts": now_iso(),
+        }
+        level = "warning" if blocked else "debug"
+        getattr(log, level)(
+            f"[Stormbreaker/review_gate] {worker_name}:{task_id} blocked={blocked}"
+        )
+        self._persist_gate(worker_name, task_id, "review_gate", gate_result, not blocked)
+        return gate_result
+
+    def _build_outcome_ledger(
+        self,
+        worker_name: str,
+        task: dict,
+        result: str,
+        evidence: list[dict],
+    ) -> dict:
+        """
+        Gate 7 — Document: what worked, what failed, what is unresolved, risk profile.
+        """
+        task_id = str(task.get("id", ""))
+        successful_attempts = [e for e in evidence if e.get("success")]
+        failed_attempts = [e for e in evidence if not e.get("success")]
+
+        risk_profile = "low"
+        if failed_attempts:
+            ratio = len(failed_attempts) / max(len(evidence), 1)
+            if ratio >= 0.66:
+                risk_profile = "high"
+            elif ratio >= 0.33:
+                risk_profile = "medium"
+
+        gate_result = {
+            "gate": "outcome_ledger",
+            "worker": worker_name,
+            "task_id": task_id,
+            "what_worked": f"{len(successful_attempts)} of {len(evidence)} attempt(s) succeeded.",
+            "what_failed": (
+                [e.get("error", "") for e in failed_attempts]
+                if failed_attempts
+                else []
+            ),
+            "unresolved": (
+                []
+                if successful_attempts
+                else ["All attempts failed — output may be stub/error."]
+            ),
+            "risk_profile": risk_profile,
+            "output_preview": result[:300],
+            "ts": now_iso(),
+        }
+        log.debug(f"[Stormbreaker/outcome_ledger] {worker_name}:{task_id} risk={risk_profile}")
+        self._persist_gate(worker_name, task_id, "outcome_ledger", gate_result, True)
+        return gate_result
+
+    def _final_gate(
+        self,
+        worker_name: str,
+        task: dict,
+        result: str,
+        ledger: dict,
+    ) -> dict:
+        """
+        Gate 8 — Confirm all required checks passed, blockers reported,
+        risk separated from fact. Returns dict with 'passed' bool and
+        'blocker' string if failed.
+        """
+        task_id = str(task.get("id", ""))
+        blockers: list[str] = []
+
+        # Check review_gate did not block (only present for HIGH tier)
+        rg = ledger.get("gates", {}).get("review_gate", {})
+        if rg.get("blocked"):
+            blockers.append(f"review_gate blocked: {rg.get('reason', 'unknown')}")
+
+        # Check outcome_ledger risk profile (only present for MEDIUM+)
+        ol = ledger.get("gates", {}).get("outcome_ledger", {})
+        if ol.get("risk_profile") == "high":
+            blockers.append("outcome_ledger reports HIGH risk — all attempts failed")
+
+        # Check result is meaningful
+        if not result or result.strip() == "":
+            blockers.append("empty output from worker")
+
+        if result.startswith("[evidence_loop error"):
+            blockers.append(f"evidence_loop exhausted all retries: {result[:150]}")
+
+        passed = len(blockers) == 0
+        blocker_summary = "; ".join(blockers) if blockers else ""
+
+        gate_result = {
+            "gate": "final_gate",
+            "worker": worker_name,
+            "task_id": task_id,
+            "passed": passed,
+            "blocker": blocker_summary,
+            "checklist": {
+                "scope_lock_ran": "scope_lock" in ledger.get("gates", {}),
+                "no_review_gate_block": not rg.get("blocked", False),
+                "outcome_risk_acceptable": ol.get("risk_profile", "low") != "high",
+                "output_non_empty": bool(result and result.strip()),
+            },
+            "ts": now_iso(),
+        }
+        log.info(
+            f"[Stormbreaker/final_gate] {worker_name}:{task_id} passed={passed}"
+            + (f" | blocker: {blocker_summary}" if not passed else "")
+        )
+        self._persist_gate(worker_name, task_id, "final_gate", gate_result, passed)
+        return gate_result
+
+    # ------------------------------------------------------------------
+    # Persistence helpers
+    # ------------------------------------------------------------------
+
+    def _persist_gate(
+        self,
+        worker_name: str,
+        task_id: str,
+        gate_name: str,
+        gate_result: dict,
+        passed: bool,
+        evidence: list | None = None,
+    ) -> None:
+        """Write a single gate result to stormbreaker_ledger. Never raises."""
+        try:
+            conn = sqlite3.connect(self.db_path)
+            conn.execute(
+                """
+                INSERT INTO stormbreaker_ledger
+                    (worker_name, task_id, gate_name, gate_result, passed, evidence, created_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    worker_name,
+                    task_id,
+                    gate_name,
+                    json.dumps(gate_result),
+                    int(passed),
+                    json.dumps(evidence or []),
+                    now_iso(),
+                ),
+            )
+            conn.commit()
+            conn.close()
+        except Exception as exc:
+            log.debug(f"[Stormbreaker] _persist_gate error (non-fatal): {exc}")
+
+    def _write_ledger(self, ledger: dict) -> None:
+        """
+        Persist the full ledger snapshot for post-mortem analysis.
+        Writes an evidence_summary row capturing attempt counts.
+        """
+        worker_name = ledger.get("worker", "unknown")
+        task_id = ledger.get("task_id", "")
+        evidence = ledger.get("evidence", [])
+
+        if evidence:
+            self._persist_gate(
+                worker_name,
+                task_id,
+                "evidence_summary",
+                {
+                    "total_attempts": len(evidence),
+                    "successes": sum(1 for e in evidence if e.get("success")),
+                },
+                passed=any(e.get("success") for e in evidence),
+                evidence=evidence,
+            )
+
+    def record_failure(
+        self,
+        worker_name: str,
+        pattern_description: str,
+        mitigation: str = "",
+    ) -> None:
+        """
+        Public helper: record a new failure pattern (or increment its counter)
+        in the failure_patterns table. Call this from escalation handlers so
+        Stormbreaker learns over time.
+        """
+        try:
+            conn = sqlite3.connect(self.db_path)
+            existing = conn.execute(
+                "SELECT id, occurrence_count FROM failure_patterns "
+                "WHERE worker_name=? AND pattern_description=?",
+                (worker_name, pattern_description),
+            ).fetchone()
+            ts = now_iso()
+            if existing:
+                conn.execute(
+                    "UPDATE failure_patterns SET occurrence_count=occurrence_count+1, last_seen=? WHERE id=?",
+                    (ts, existing[0]),
+                )
+            else:
+                conn.execute(
+                    """
+                    INSERT INTO failure_patterns
+                        (worker_name, pattern_description, occurrence_count, last_seen, mitigation)
+                    VALUES (?, ?, 1, ?, ?)
+                    """,
+                    (worker_name, pattern_description, ts, mitigation),
+                )
+            conn.commit()
+            conn.close()
+        except Exception as exc:
+            log.debug(f"[Stormbreaker] record_failure error (non-fatal): {exc}")
+
+
+# ---------------------------------------------------------------------------
 # Worker dispatch
 # ---------------------------------------------------------------------------
 
@@ -195,7 +764,6 @@ def dispatch_claude_api(worker: dict, input_data: dict, dry_run: bool = False) -
 def dispatch_bash(worker: dict, input_data: dict, dry_run: bool = False) -> str:
     """Dispatch a bash worker. Command is split via shlex for safety — no shell=True."""
     cmd_template = worker.get("command", "echo no-command-configured")
-    # Replace {{INPUT}} placeholder with JSON-encoded input
     cmd_str = cmd_template.replace("{{INPUT}}", json.dumps(input_data))
 
     if dry_run:
@@ -254,7 +822,7 @@ def dispatch_worker(worker: dict, input_data: dict, dry_run: bool = False) -> st
 
 
 # ---------------------------------------------------------------------------
-# QA scoring
+# QA scoring (legacy path — kept for backward-compat; Stormbreaker supersedes)
 # ---------------------------------------------------------------------------
 
 
@@ -375,7 +943,13 @@ def seed_queue_if_empty(conn: sqlite3.Connection, arch: dict) -> None:
         ts = now_iso()
         conn.execute(
             "INSERT INTO items (item_key, state, data, created_at, updated_at) VALUES (?,?,?,?,?)",
-            ("seed_001", "queued", json.dumps({"source": "seed", "outcome": arch.get("system", {}).get("outcome", "")}), ts, ts),
+            (
+                "seed_001",
+                "queued",
+                json.dumps({"source": "seed", "outcome": arch.get("system", {}).get("outcome", "")}),
+                ts,
+                ts,
+            ),
         )
         conn.commit()
 
@@ -391,15 +965,26 @@ async def run_loop(arch: dict, conn: sqlite3.Connection, dry_run: bool, once: bo
     qa_threshold: float = float(qa_cfg.get("threshold", 0.75))
     max_retries: int = int(qa_cfg.get("max_retries", 2))
     batch_size: int = int(arch.get("loop", {}).get("batch_size", 10))
-    human_gates: list[dict] = arch.get("human_gates", [])
-    gate_states = {g["trigger_state"]: g for g in human_gates if isinstance(g, dict) and "trigger_state" in g}
+    human_gates_cfg: list[dict] = arch.get("human_gates", [])
+    gate_states = {
+        g["trigger_state"]: g
+        for g in human_gates_cfg
+        if isinstance(g, dict) and "trigger_state" in g
+    }
+
+    db_path_str = arch.get("loop", {}).get("state_store", "./forge_state.db")
+    stormbreaker = StormBreakerGate(db_path=db_path_str)
 
     seed_queue_if_empty(conn, arch)
 
     iteration = 0
     last_report_time = time.time()
 
-    log.info(f"[FORGE] Loop starting. Workers: {[w['name'] for w in workers]}. Batch: {batch_size}. QA threshold: {qa_threshold}")
+    log.info(
+        f"[FORGE] Loop starting. Workers: {[w['name'] for w in workers]}. "
+        f"Batch: {batch_size}. QA threshold: {qa_threshold}. "
+        f"Stormbreaker: ENABLED"
+    )
     set_meta(conn, "loop_start", now_iso())
     set_meta(conn, "human_stop", "0")
 
@@ -436,18 +1021,72 @@ async def run_loop(arch: dict, conn: sqlite3.Connection, dry_run: bool, once: bo
             pipeline_failed = False
             for worker in workers:
                 worker_name = worker.get("name", "UNKNOWN")
-                log.info(f"[item {item_id}] Running {worker_name}...")
+                risk_tier = resolve_risk_tier(worker_name)
+                log.info(
+                    f"[item {item_id}] Running {worker_name} "
+                    f"(Stormbreaker tier={risk_tier})..."
+                )
 
-                output_text = dispatch_worker(worker, current_output, dry_run)
+                # Build Stormbreaker task dict
+                sb_task: dict = {
+                    "id": str(item_id),
+                    "item_data": current_output,
+                    "worker_name": worker_name,
+                }
+
+                # Capture loop variables for the closure
+                def make_execute_fn(
+                    w: dict, inp: dict, dr: bool
+                ) -> Callable[[dict], str]:
+                    def execute_fn(_task: dict) -> str:
+                        return dispatch_worker(w, inp, dr)
+                    return execute_fn
+
+                execute_fn = make_execute_fn(worker, current_output, dry_run)
+
+                try:
+                    output_text = stormbreaker.run(
+                        worker_name=worker_name,
+                        task=sb_task,
+                        execute_fn=execute_fn,
+                        risk_tier=risk_tier,
+                    )
+                except RuntimeError as sb_err:
+                    log.warning(
+                        f"[item {item_id}] Stormbreaker blocked {worker_name}: {sb_err}"
+                    )
+                    stormbreaker.record_failure(
+                        worker_name=worker_name,
+                        pattern_description=str(sb_err)[:400],
+                        mitigation="Investigate gate that blocked and fix root cause.",
+                    )
+                    transition(
+                        conn, item_id, "escalated", worker_name,
+                        f"Stormbreaker: {str(sb_err)[:200]}",
+                    )
+                    pipeline_failed = True
+                    break
+
                 append_worker_log(conn, item_id, worker_name, output_text)
 
+                # Legacy QA scoring path — still runs for writer-role workers so
+                # existing ARCHITECTURE.yaml rubrics are honoured. Stormbreaker's
+                # evidence_loop provides the primary retry guard; this adds the
+                # rubric-based score on top.
                 role = worker.get("role", "").lower()
-                is_writer = any(kw in role for kw in ["writer", "drafter", "generator", "author", "composer"])
-                is_qa_worker = "qa" in worker_name.lower() or "scorer" in worker_name.lower()
+                is_writer = any(
+                    kw in role
+                    for kw in ["writer", "drafter", "generator", "author", "composer"]
+                )
+                is_qa_worker = (
+                    "qa" in worker_name.lower() or "scorer" in worker_name.lower()
+                )
 
                 if is_writer and not is_qa_worker and qa_cfg:
                     score = qa_score(output_text, qa_cfg, dry_run)
-                    log.info(f"[item {item_id}] QA score: {score:.2f} (threshold: {qa_threshold})")
+                    log.info(
+                        f"[item {item_id}] QA score: {score:.2f} (threshold: {qa_threshold})"
+                    )
                     conn.execute(
                         "UPDATE items SET qa_score=? WHERE id=?", (score, item_id)
                     )
@@ -460,31 +1099,64 @@ async def run_loop(arch: dict, conn: sqlite3.Connection, dry_run: bool, once: bo
                                 "UPDATE items SET retries=retries+1 WHERE id=?", (item_id,)
                             )
                             conn.commit()
-                            log.info(f"[item {item_id}] QA fail — retry {retries+1}/{max_retries}")
+                            log.info(
+                                f"[item {item_id}] QA fail — retry {retries+1}/{max_retries}"
+                            )
                             feedback_input = {
                                 **current_output,
                                 "_qa_feedback": f"Previous score: {score:.2f}. Improve quality.",
                             }
-                            output_text = dispatch_worker(worker, feedback_input, dry_run)
-                            append_worker_log(conn, item_id, f"{worker_name}/retry", output_text)
+                            retry_task = {**sb_task, "item_data": feedback_input}
+                            output_text = stormbreaker.run(
+                                worker_name=f"{worker_name}/retry",
+                                task=retry_task,
+                                execute_fn=make_execute_fn(worker, feedback_input, dry_run),
+                                risk_tier=risk_tier,
+                            )
+                            append_worker_log(
+                                conn, item_id, f"{worker_name}/retry", output_text
+                            )
                         else:
-                            log.warning(f"[item {item_id}] QA fail after {max_retries} retries — escalating")
-                            transition(conn, item_id, "escalated", worker_name, f"QA score {score:.2f} below threshold {qa_threshold}")
+                            log.warning(
+                                f"[item {item_id}] QA fail after {max_retries} retries — escalating"
+                            )
+                            stormbreaker.record_failure(
+                                worker_name=worker_name,
+                                pattern_description=(
+                                    f"QA score {score:.2f} consistently below "
+                                    f"threshold {qa_threshold}"
+                                ),
+                                mitigation="Review system_prompt and rubric alignment.",
+                            )
+                            transition(
+                                conn, item_id, "escalated", worker_name,
+                                f"QA score {score:.2f} below threshold {qa_threshold}",
+                            )
                             pipeline_failed = True
                             break
 
-                current_output = {"_prev_worker": worker_name, "_output": output_text, **current_output}
+                current_output = {
+                    "_prev_worker": worker_name,
+                    "_output": output_text,
+                    **current_output,
+                }
 
                 if worker_name in gate_states:
                     gate = gate_states[worker_name]
-                    log.info(f"[item {item_id}] Human gate: {gate.get('id', 'gate')} — {gate.get('description', '')}")
+                    log.info(
+                        f"[item {item_id}] Human gate: {gate.get('id', 'gate')} — "
+                        f"{gate.get('description', '')}"
+                    )
                     ts = now_iso()
                     conn.execute(
                         "INSERT INTO human_gates (gate_id, item_id, state, created_at) VALUES (?,?,?,?)",
                         (gate.get("id", "gate"), item_id, "pending", ts),
                     )
                     conn.commit()
-                    transition(conn, item_id, "pending_approval", worker_name, f"gate: {gate.get('id')}")
+                    transition(
+                        conn, item_id, "pending_approval", worker_name,
+                        f"gate: {gate.get('id')}",
+                    )
                     pipeline_failed = True
                     break
 

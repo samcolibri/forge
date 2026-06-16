@@ -1,0 +1,16 @@
+{
+  "files_allowed": [
+    "README.md",
+    "docs/**",
+    "FORGE.md"
+  ],
+  "needs_spike": false,
+  "security_sensitive": false,
+  "spec_path": null,
+  "spec_skip_reason": null,
+  "state_migration": false,
+  "task": "Update FORGE docs and dashboard to reflect Hephaestus integration",
+  "task_id": "T2",
+  "tdd_required": true,
+  "validation_commands": []
+}

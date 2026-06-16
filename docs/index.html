@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>FORGE — Outcome-Based Agent OS</title>
+  <title>FORGE × Hephaestus — Outcome Execution OS</title>
   <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
   <style>
     :root {
@@ -19,6 +19,7 @@
       --red: #ef4444;
       --purple: #8b5cf6;
       --cyan: #06b6d4;
+      --orange: #f97316;
       --text: #e2e8f0;
       --muted: #64748b;
       --subtle: #94a3b8;
@@ -34,7 +35,7 @@
       min-height: 100vh;
     }
 
-    /* ── NAV ── */
+    /* NAV */
     nav {
       position: sticky;
       top: 0;
@@ -54,6 +55,7 @@
       color: var(--blue);
       text-decoration: none;
     }
+    .nav-brand span { color: var(--green); font-weight: 400; font-size: 1rem; }
     .nav-links {
       display: flex;
       gap: 2rem;
@@ -67,7 +69,7 @@
     }
     .nav-links a:hover { color: var(--text); }
 
-    /* ── LAYOUT ── */
+    /* LAYOUT */
     .container {
       max-width: 1200px;
       margin: 0 auto;
@@ -78,7 +80,7 @@
       padding: 4rem 0;
     }
 
-    /* ── HERO ── */
+    /* HERO */
     .hero {
       text-align: center;
       padding: 6rem 0 4rem;
@@ -94,7 +96,7 @@
       font-weight: 600;
     }
     .hero-title {
-      font-size: clamp(4rem, 10vw, 8rem);
+      font-size: clamp(3rem, 9vw, 7rem);
       font-weight: 900;
       letter-spacing: -0.04em;
       background: linear-gradient(135deg, #fff 0%, var(--blue) 50%, var(--green) 100%);
@@ -102,21 +104,36 @@
       -webkit-text-fill-color: transparent;
       background-clip: text;
       line-height: 1;
-      margin-bottom: 1rem;
+      margin-bottom: 0.5rem;
+    }
+    .hero-x {
+      font-size: clamp(1.5rem, 4vw, 2.5rem);
+      font-weight: 300;
+      color: var(--muted);
+      margin-bottom: 0.75rem;
+      letter-spacing: 0.05em;
     }
     .hero-subtitle {
-      font-size: 1.375rem;
-      color: var(--subtle);
-      font-weight: 400;
+      font-size: 1rem;
+      color: var(--muted);
+      font-weight: 500;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
       margin-bottom: 1.5rem;
     }
     .hero-tagline {
-      font-size: 1.75rem;
+      font-size: 1.5rem;
       font-weight: 700;
       color: var(--text);
-      margin-bottom: 2.5rem;
+      margin-bottom: 0.5rem;
     }
     .hero-tagline span { color: var(--green); }
+    .hero-robustness {
+      font-size: 1rem;
+      color: var(--subtle);
+      margin-bottom: 2.5rem;
+    }
+    .hero-robustness strong { color: var(--green); }
     .pills {
       display: flex;
       flex-wrap: wrap;
@@ -138,8 +155,9 @@
     .pill.blue { border-color: var(--blue); color: var(--blue); background: rgba(59,130,246,0.08); }
     .pill.green { border-color: var(--green); color: var(--green); background: rgba(16,185,129,0.08); }
     .pill.purple { border-color: var(--purple); color: var(--purple); background: rgba(139,92,246,0.08); }
+    .pill.orange { border-color: var(--orange); color: var(--orange); background: rgba(249,115,22,0.08); }
 
-    /* ── SECTION HEADERS ── */
+    /* SECTION HEADERS */
     .section-label {
       font-size: 0.7rem;
       letter-spacing: 0.2em;
@@ -161,7 +179,7 @@
       max-width: 600px;
     }
 
-    /* ── MERMAID DIAGRAMS ── */
+    /* MERMAID DIAGRAMS */
     .diagram-wrap {
       background: var(--surface);
       border: 1px solid var(--border);
@@ -174,7 +192,82 @@
       justify-content: center;
     }
 
-    /* ── TABLE ── */
+    /* HEPHAESTUS CARDS */
+    .heph-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 1.5rem;
+      margin-bottom: 3rem;
+    }
+    .heph-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1.75rem;
+      transition: border-color 0.2s, transform 0.2s;
+    }
+    .heph-card:hover { transform: translateY(-2px); }
+    .heph-card.stormbreaker { border-top: 3px solid var(--orange); }
+    .heph-card.ontology { border-top: 3px solid var(--purple); }
+    .heph-card.multiruntime { border-top: 3px solid var(--cyan); }
+    .heph-card-label {
+      font-size: 0.65rem;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      font-weight: 700;
+      margin-bottom: 0.4rem;
+    }
+    .heph-card.stormbreaker .heph-card-label { color: var(--orange); }
+    .heph-card.ontology .heph-card-label { color: var(--purple); }
+    .heph-card.multiruntime .heph-card-label { color: var(--cyan); }
+    .heph-card-title {
+      font-size: 1.15rem;
+      font-weight: 700;
+      margin-bottom: 0.5rem;
+    }
+    .heph-card-stat {
+      font-size: 0.95rem;
+      font-weight: 600;
+      margin-bottom: 0.75rem;
+    }
+    .heph-card.stormbreaker .heph-card-stat { color: var(--green); }
+    .heph-card.ontology .heph-card-stat { color: var(--purple); }
+    .heph-card.multiruntime .heph-card-stat { color: var(--cyan); }
+    .heph-card-body { color: var(--subtle); font-size: 0.875rem; }
+
+    /* STORMBREAKER GATES */
+    .gates-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+      gap: 1rem;
+      margin-top: 2rem;
+    }
+    .gate-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 1.1rem 1.25rem;
+      transition: border-color 0.2s;
+    }
+    .gate-card:hover { border-color: var(--orange); }
+    .gate-num {
+      font-size: 0.65rem;
+      font-weight: 700;
+      color: var(--orange);
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      margin-bottom: 0.25rem;
+    }
+    .gate-name {
+      font-family: monospace;
+      font-size: 0.875rem;
+      font-weight: 700;
+      color: var(--text);
+      margin-bottom: 0.4rem;
+    }
+    .gate-desc { font-size: 0.8rem; color: var(--subtle); }
+
+    /* TABLE */
     .projects-table {
       width: 100%;
       border-collapse: collapse;
@@ -208,7 +301,7 @@
     .outcome-text {
       color: var(--subtle);
       font-size: 0.85rem;
-      max-width: 300px;
+      max-width: 280px;
     }
 
     .badge {
@@ -221,6 +314,7 @@
     .badge-yellow { background: rgba(245,158,11,0.15); color: var(--yellow); border: 1px solid rgba(245,158,11,0.3); }
     .badge-green  { background: rgba(16,185,129,0.15); color: var(--green);  border: 1px solid rgba(16,185,129,0.3); }
     .badge-blue   { background: rgba(59,130,246,0.15); color: var(--blue);   border: 1px solid rgba(59,130,246,0.3); }
+    .badge-orange { background: rgba(249,115,22,0.15); color: var(--orange); border: 1px solid rgba(249,115,22,0.3); }
 
     .progress-bar {
       height: 6px;
@@ -237,7 +331,7 @@
 
     .timestamp { color: var(--muted); font-size: 0.8rem; }
 
-    /* ── HOW IT WORKS ── */
+    /* HOW IT WORKS */
     .steps-grid {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
@@ -265,7 +359,7 @@
     .step-title { font-size: 1.1rem; font-weight: 700; margin-bottom: 0.5rem; }
     .step-body { color: var(--subtle); font-size: 0.9rem; }
 
-    /* ── WORKERS ── */
+    /* WORKERS */
     .workers-grid {
       display: grid;
       grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
@@ -300,8 +394,17 @@
       font-family: monospace;
     }
     .worker-desc { font-size: 0.85rem; color: var(--subtle); }
+    .worker-tag {
+      display: inline-block;
+      margin-top: 0.6rem;
+      font-size: 0.65rem;
+      font-weight: 700;
+      color: var(--orange);
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+    }
 
-    /* ── CLI ── */
+    /* CLI */
     .cli-block {
       background: #060a14;
       border: 1px solid var(--border);
@@ -335,7 +438,7 @@
     .cli-str    { color: var(--yellow); }
     .cli-out    { color: var(--subtle); padding-left: 1rem; }
 
-    /* ── FOOTER ── */
+    /* FOOTER */
     footer {
       border-top: 1px solid var(--border);
       padding: 2.5rem 2rem;
@@ -346,15 +449,33 @@
     footer a { color: var(--blue); text-decoration: none; }
     footer a:hover { text-decoration: underline; }
 
-    /* ── UTILS ── */
+    /* UTILS */
     .divider {
       height: 1px;
       background: var(--border);
     }
 
+    .stat-row {
+      display: flex;
+      gap: 2rem;
+      flex-wrap: wrap;
+      margin-bottom: 2.5rem;
+    }
+    .stat-item { text-align: center; }
+    .stat-val {
+      font-size: 2.5rem;
+      font-weight: 900;
+      line-height: 1;
+      background: linear-gradient(135deg, var(--green), var(--blue));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .stat-label { font-size: 0.75rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.1em; margin-top: 0.25rem; }
+
     @media (max-width: 768px) {
       .nav-links { display: none; }
-      .hero-title { font-size: 4rem; }
+      .hero-title { font-size: 3.5rem; }
       section { padding: 2.5rem 0; }
     }
   </style>
@@ -363,15 +484,16 @@
 
 <!-- NAV -->
 <nav>
-  <a class="nav-brand" href="#">FORGE</a>
+  <a class="nav-brand" href="#">FORGE <span>&#215; Hephaestus</span></a>
   <ul class="nav-links">
+    <li><a href="#stormbreaker">Stormbreaker</a></li>
     <li><a href="#architecture">Architecture</a></li>
     <li><a href="#projects">Projects</a></li>
     <li><a href="#how">How It Works</a></li>
     <li><a href="#workers">Workers</a></li>
     <li><a href="#loop">The Loop</a></li>
     <li><a href="#cli">CLI</a></li>
-    <li><a href="https://github.com/samcolibri/forge" target="_blank">GitHub →</a></li>
+    <li><a href="https://github.com/samcolibri/forge" target="_blank">GitHub &rarr;</a></li>
   </ul>
 </nav>
 
@@ -380,48 +502,187 @@
   <div class="container">
     <p class="hero-eyebrow">samcolibri / forge</p>
     <h1 class="hero-title">FORGE</h1>
-    <p class="hero-subtitle">Outcome-Based Agent OS</p>
+    <p class="hero-x">&#215; Hephaestus</p>
+    <p class="hero-subtitle">Stormbreaker-governed &middot; Ontology-backed &middot; Multi-runtime</p>
     <p class="hero-tagline">Define the outcome. <span>FORGE runs the loop.</span></p>
+    <p class="hero-robustness">Not a project tool. An outcome execution OS with <strong>99.26% operational robustness.</strong></p>
     <div class="pills">
-      <span class="pill blue">⚙ Version 1.0</span>
-      <span class="pill">Universal</span>
-      <span class="pill">Any Repo</span>
+      <span class="pill blue">Version 1.0</span>
+      <span class="pill orange">Stormbreaker 8-Gate</span>
+      <span class="pill purple">Local Ontology</span>
       <span class="pill green">24/7 Loop</span>
-      <span class="pill purple">Human Gates</span>
+      <span class="pill">Human Gates</span>
+      <span class="pill cyan">Multi-runtime</span>
     </div>
   </div>
 </section>
+
+<!-- HEPHAESTUS INTEGRATION -->
+<section id="stormbreaker">
+  <div class="container">
+    <p class="section-label">Hephaestus Integration</p>
+    <h2 class="section-title">Governed at every step</h2>
+    <p class="section-desc">Three Hephaestus components wire into FORGE to bring production-grade robustness to autonomous work.</p>
+
+    <div class="heph-grid">
+      <div class="heph-card stormbreaker">
+        <div class="heph-card-label">Protocol</div>
+        <div class="heph-card-title">Stormbreaker</div>
+        <div class="heph-card-stat">99.26% operational robustness vs 76.48% native</div>
+        <div class="heph-card-body">Every worker output passes through 8 mandatory gates before advancing. scope_lock, contract, failure_memory, verifier_first_plan, evidence_loop, review_gate, outcome_ledger, final_gate. Low-risk tasks skip to final_gate; all others run the full chain.</div>
+      </div>
+      <div class="heph-card ontology">
+        <div class="heph-card-label">Knowledge Layer</div>
+        <div class="heph-card-title">Local Ontology</div>
+        <div class="heph-card-stat">Project docs queried before external search</div>
+        <div class="heph-card-body">Hephaestus runtime at ~/.agentlas/runtime/ indexes all project documents. SCOUT queries the local ontology first &mdash; only falling back to Exa when the answer is not found locally. Fewer API calls, faster context, no hallucinated sources.</div>
+      </div>
+      <div class="heph-card multiruntime">
+        <div class="heph-card-label">Deployment</div>
+        <div class="heph-card-title">Multi-runtime AGENTS.md</div>
+        <div class="heph-card-stat">Claude Code &middot; Codex &middot; Gemini &middot; Cursor &middot; Antigravity</div>
+        <div class="heph-card-body">architect.py generates a full AGENTS.md alongside ARCHITECTURE.yaml. Routing cards on every worker YAML tell each agent runtime exactly how to execute, what tools to use, and which gate protocol governs their outputs.</div>
+      </div>
+    </div>
+
+    <!-- Stormbreaker diagram -->
+    <p class="section-label" style="margin-top:1rem;">Stormbreaker Protocol</p>
+    <h3 class="section-title" style="font-size:1.5rem;">8-Gate execution path</h3>
+    <p class="section-desc">Every task unit is governed by this state machine. High-risk tasks traverse all 8 gates; LOW risk skips directly to final_gate.</p>
+    <div class="diagram-wrap">
+      <div class="mermaid">
+stateDiagram-v2
+    direction LR
+    [*] --> scope_lock : task dispatched
+    scope_lock --> issue_contract : boundary verified
+    issue_contract --> failure_memory : contract set
+    failure_memory --> verifier_first_plan : no repeat failures
+    verifier_first_plan --> evidence_loop : plan validated
+    evidence_loop --> review_gate : evidence gathered
+    review_gate --> outcome_ledger : QA score &ge; 8.5
+    outcome_ledger --> final_gate : ledger updated
+    final_gate --> [*] : human approved
+
+    scope_lock --> final_gate : LOW risk shortcut
+    review_gate --> verifier_first_plan : QA score &lt; 8.5 (retry)
+    issue_contract --> [*] : contract violation (escalate)
+
+    note right of scope_lock
+      Gate 1: stays within outcome boundary
+    end note
+    note right of evidence_loop
+      Gate 5: all claims traceable
+    end note
+    note right of final_gate
+      Gate 8: human approval required
+    end note
+      </div>
+    </div>
+
+    <!-- Gate cards -->
+    <div class="gates-grid">
+      <div class="gate-card">
+        <div class="gate-num">Gate 1</div>
+        <div class="gate-name">scope_lock</div>
+        <div class="gate-desc">Output stays within the defined outcome boundary. Rejects scope creep before it propagates.</div>
+      </div>
+      <div class="gate-card">
+        <div class="gate-num">Gate 2</div>
+        <div class="gate-name">issue_contract</div>
+        <div class="gate-desc">Worker fulfilled its stated contract for this task unit. Missing deliverable triggers escalation.</div>
+      </div>
+      <div class="gate-card">
+        <div class="gate-num">Gate 3</div>
+        <div class="gate-name">failure_memory</div>
+        <div class="gate-desc">No repeat of a previously failed pattern. Failure history is persistent across loop restarts.</div>
+      </div>
+      <div class="gate-card">
+        <div class="gate-num">Gate 4</div>
+        <div class="gate-name">verifier_first_plan</div>
+        <div class="gate-desc">Independent verifier validates the execution plan before work begins. Catches bad plans early.</div>
+      </div>
+      <div class="gate-card">
+        <div class="gate-num">Gate 5</div>
+        <div class="gate-name">evidence_loop</div>
+        <div class="gate-desc">All claims backed by traceable evidence. No unverified facts advance in the pipeline.</div>
+      </div>
+      <div class="gate-card">
+        <div class="gate-num">Gate 6</div>
+        <div class="gate-name">review_gate</div>
+        <div class="gate-desc">QA score 8.5/10 or higher required. Claude Opus 4.7 scores with structured critique on failure.</div>
+      </div>
+      <div class="gate-card">
+        <div class="gate-num">Gate 7</div>
+        <div class="gate-name">outcome_ledger</div>
+        <div class="gate-desc">Progress logged to the immutable outcome ledger. Every approved unit is auditable forever.</div>
+      </div>
+      <div class="gate-card">
+        <div class="gate-num">Gate 8</div>
+        <div class="gate-name">final_gate</div>
+        <div class="gate-desc">Human approval required. Public safety scan runs here. Nothing leaves the system without sign-off.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="divider"></div>
 
 <!-- ARCHITECTURE DIAGRAM -->
 <section id="architecture">
   <div class="container">
     <p class="section-label">System Design</p>
     <h2 class="section-title">Full Architecture</h2>
-    <p class="section-desc">From raw outcome text to shipped result — the complete FORGE pipeline.</p>
+    <p class="section-desc">From raw outcome text to shipped result &mdash; the complete FORGE + Hephaestus pipeline, including the ontology bridge between SCOUT and external search.</p>
     <div class="diagram-wrap">
       <div class="mermaid">
 flowchart TD
-    A["🎯 OUTCOME INPUT\nany format: text / paste / notes / PDF"]
-    B["💉 INJECT\nBASE_FABLE → structured fable prompt\nvia Claude Sonnet"]
-    C["🏗 ARCHITECT\nfable → worker fleet\n+ ARCHITECTURE.yaml"]
-    D{{"👤 Human Sign-Off"}}
-    E["🚀 SPAWNER\nstarts loop as background daemon"]
-    F["🔄 LOOP ORCHESTRATOR\n24/7 — survives restarts"]
-    G["⚙️ WORKER POOL\nClaude API · Codex bash\nAGY · any tool"]
-    H["✅ QA GATE\nscore ≥ 8.5 / 10"]
-    I{{"👤 Human Approves\nOutputs"}}
-    J["🎯 OUTCOME VALIDATOR\nmet? → done  else → loop again"]
-    K["📊 REPORTER\nhourly email\n+ GitHub Pages update"]
+    A["OUTCOME INPUT
+any format: text / paste / notes / PDF"]
+    B["INJECT
+BASE_FABLE &rarr; structured fable prompt
+via Claude Sonnet"]
+    C["ARCHITECT
+fable &rarr; worker fleet
++ ARCHITECTURE.yaml + AGENTS.md
++ routing cards"]
+    D{{"Human Sign-Off"}}
+    E["SPAWNER
+starts loop as background daemon"]
+    F["LOOP ORCHESTRATOR
+24/7 &mdash; survives restarts"]
+    G["STORMBREAKER GATE
+scope_lock &rarr; contract &rarr; failure_memory
+&rarr; verify_plan &rarr; evidence_loop
+&rarr; review_gate &rarr; ledger &rarr; final_gate"]
+    ONT["ONTOLOGY BRIDGE
+Hephaestus local runtime
+project docs queried first"]
+    H["WORKER POOL
+Claude API &middot; Codex &middot; AGY &middot; MCP"]
+    EXA["EXA / EXTERNAL SEARCH
+only if ontology miss"]
+    SAFE["PUBLIC SAFETY SCAN
+before Gate 2 releases anything"]
+    I{{"HUMAN GATE 2
+Sam approves &mdash; nothing leaves without sign-off"}}
+    J["OUTCOME VALIDATOR
+met? done  else loop again"]
+    K["REPORTER
+hourly email
++ GitHub Pages update"]
 
     A --> B --> C --> D
     D -->|approved| E --> F
-    F --> G --> H
-    H -->|pass| I
-    H -->|fail| G
+    F --> G
+    G --> ONT
+    ONT -->|found locally| H
+    ONT -->|cache miss| EXA --> H
+    H --> SAFE --> I
+    G -->|gate fail| H
     I -->|approved| J
-    I -->|rejected| G
+    I -->|rejected| H
     J -->|not yet| F
-    J -->|done ✓| K
+    J -->|done| K
 
     style A fill:#1e3a5f,stroke:#3b82f6,color:#e2e8f0
     style B fill:#1a3040,stroke:#06b6d4,color:#e2e8f0
@@ -429,8 +690,11 @@ flowchart TD
     style D fill:#2d1f63,stroke:#8b5cf6,color:#e2e8f0
     style E fill:#1e3a5f,stroke:#3b82f6,color:#e2e8f0
     style F fill:#1e3a5f,stroke:#3b82f6,color:#e2e8f0
-    style G fill:#133828,stroke:#10b981,color:#e2e8f0
-    style H fill:#3d2a10,stroke:#f59e0b,color:#e2e8f0
+    style G fill:#3d1a07,stroke:#f97316,color:#e2e8f0
+    style ONT fill:#2d1f63,stroke:#8b5cf6,color:#e2e8f0
+    style H fill:#133828,stroke:#10b981,color:#e2e8f0
+    style EXA fill:#1a2a1a,stroke:#6b7280,color:#94a3b8
+    style SAFE fill:#3d2a10,stroke:#f59e0b,color:#e2e8f0
     style I fill:#2d1f63,stroke:#8b5cf6,color:#e2e8f0
     style J fill:#133828,stroke:#10b981,color:#e2e8f0
     style K fill:#1e3a5f,stroke:#3b82f6,color:#e2e8f0
@@ -453,6 +717,7 @@ flowchart TD
           <tr>
             <th>Project</th>
             <th>Outcome</th>
+            <th>Stormbreaker</th>
             <th>Status</th>
             <th>Progress</th>
             <th>Last Update</th>
@@ -464,7 +729,8 @@ flowchart TD
               <a class="project-name" href="https://samcolibri.github.io/moreland-sdr-agent/" target="_blank">moreland-sdr</a>
               <div style="font-size:0.72rem;color:var(--muted);margin-top:0.2rem;">samcolibri/moreland-sdr-agent</div>
             </td>
-            <td class="outcome-text">≥5 booked meetings from 100 school districts in Moreland area</td>
+            <td class="outcome-text">5 booked meetings from 100 school districts in Moreland area</td>
+            <td><span class="badge badge-orange">active</span></td>
             <td><span class="badge badge-yellow">Architecture Approved</span></td>
             <td>
               <div style="display:flex;align-items:center;gap:0.75rem;">
@@ -473,6 +739,22 @@ flowchart TD
               </div>
             </td>
             <td class="timestamp">Awaiting API keys</td>
+          </tr>
+          <tr>
+            <td>
+              <span class="project-name" style="cursor:default;">simplenursing-nova</span>
+              <div style="font-size:0.72rem;color:var(--muted);margin-top:0.2rem;">demo only</div>
+            </td>
+            <td class="outcome-text">500K TikTok views from organic content pipeline</td>
+            <td><span class="badge badge-orange">active</span></td>
+            <td><span class="badge badge-blue">Demo Running</span></td>
+            <td>
+              <div style="display:flex;align-items:center;gap:0.75rem;">
+                <div class="progress-bar"><div class="progress-bar-fill" style="width:10%"></div></div>
+                <span style="font-size:0.8rem;color:var(--subtle);">10%</span>
+              </div>
+            </td>
+            <td class="timestamp">Demo mode</td>
           </tr>
         </tbody>
       </table>
@@ -487,25 +769,25 @@ flowchart TD
   <div class="container">
     <p class="section-label">Getting Started</p>
     <h2 class="section-title">How It Works</h2>
-    <p class="section-desc">Three steps from outcome to autonomous execution.</p>
+    <p class="section-desc">Three steps from outcome to autonomous Stormbreaker-governed execution.</p>
     <div class="steps-grid">
       <div class="step-card">
         <span class="step-num">1</span>
-        <div class="step-icon">🎯</div>
+        <div class="step-icon">&#127919;</div>
         <h3 class="step-title">Define Your Outcome</h3>
-        <p class="step-body">Type it in plain English, paste notes, or upload a brief. Any format works. FORGE converts it into a structured fable prompt using CL4R1T4S injection — no templates to fill out.</p>
+        <p class="step-body">Type it in plain English, paste notes, or upload a brief. Any format works. FORGE converts it into a structured fable prompt using CL4R1T4S injection &mdash; no templates to fill out.</p>
       </div>
       <div class="step-card">
         <span class="step-num">2</span>
-        <div class="step-icon">✍️</div>
+        <div class="step-icon">&#9997;</div>
         <h3 class="step-title">Sign Off on Architecture</h3>
-        <p class="step-body">FORGE shows you the worker fleet it designed: which agents run, what tools they use, in what order. You approve or tweak. One gate before the loop starts — nothing more.</p>
+        <p class="step-body">FORGE shows you the worker fleet it designed: ARCHITECTURE.yaml, AGENTS.md, and Stormbreaker routing cards for each worker. You approve or tweak. One gate before the loop starts.</p>
       </div>
       <div class="step-card">
         <span class="step-num">3</span>
-        <div class="step-icon">📬</div>
+        <div class="step-icon">&#128235;</div>
         <h3 class="step-title">Check Email Hourly</h3>
-        <p class="step-body">FORGE runs 24/7 until the outcome is met. You get an hourly email and a live dashboard. Human gates control anything that leaves the system. You never have to ask "what's happening?"</p>
+        <p class="step-body">FORGE runs 24/7 through the Stormbreaker 8-gate protocol until the outcome is met. Hourly email + live dashboard. Human Gate 2 controls everything that leaves. You never have to ask what is happening.</p>
       </div>
     </div>
   </div>
@@ -518,17 +800,18 @@ flowchart TD
   <div class="container">
     <p class="section-label">Agent Archetypes</p>
     <h2 class="section-title">Worker Types</h2>
-    <p class="section-desc">FORGE assembles a fleet from these building blocks, customized per outcome.</p>
+    <p class="section-desc">FORGE assembles a fleet from these building blocks, customized per outcome. Each worker gets a Stormbreaker routing card in AGENTS.md.</p>
     <div class="workers-grid">
       <div class="worker-card scout">
         <div class="worker-name">SCOUT</div>
         <div class="worker-model">Claude Sonnet 4.6</div>
-        <div class="worker-desc">Research and discovery — finds targets, surfaces signals, scrapes data. Runs first in every pipeline.</div>
+        <div class="worker-desc">Research and discovery &mdash; finds targets, surfaces signals, scrapes data. Queries local Hephaestus ontology before falling back to Exa.</div>
+        <div class="worker-tag">ontology-first</div>
       </div>
       <div class="worker-card enricher">
         <div class="worker-name">ENRICHER</div>
         <div class="worker-model">Claude Haiku / Codex</div>
-        <div class="worker-desc">Takes raw targets and fills in missing data — contacts, context, firmographics. Calls external APIs.</div>
+        <div class="worker-desc">Takes raw targets and fills in missing data &mdash; contacts, context, firmographics. Calls external APIs.</div>
       </div>
       <div class="worker-card validator">
         <div class="worker-name">VALIDATOR</div>
@@ -543,7 +826,7 @@ flowchart TD
       <div class="worker-card qa">
         <div class="worker-name">QA_SCORER</div>
         <div class="worker-model">Claude Opus 4.7</div>
-        <div class="worker-desc">Scores every output ≥8.5/10 before it advances. Provides structured critique. The quality gate that never sleeps.</div>
+        <div class="worker-desc">Scores every output 8.5/10 or higher before it advances. Provides structured critique. The quality gate that never sleeps.</div>
       </div>
       <div class="worker-card reporter">
         <div class="worker-name">REPORTER</div>
@@ -561,22 +844,22 @@ flowchart TD
   <div class="container">
     <p class="section-label">State Machine</p>
     <h2 class="section-title">The Loop</h2>
-    <p class="section-desc">Every unit of work moves through this universal state machine. Restartable, resumable, auditable.</p>
+    <p class="section-desc">Every unit of work moves through this universal state machine. Restartable, resumable, auditable. Stormbreaker gates replace the old single QA gate.</p>
     <div class="diagram-wrap">
       <div class="mermaid">
 stateDiagram-v2
     [*] --> queued : task created
     queued --> dispatching : loop tick
     dispatching --> executing : worker picked up
-    executing --> qa_scoring : worker done
-    qa_scoring --> dispatching : score < 8.5 (retry)
-    qa_scoring --> pending_approval : score ≥ 8.5
+    executing --> stormbreaker : worker done
+    stormbreaker --> dispatching : gate fail (retry)
+    stormbreaker --> pending_approval : all 8 gates pass
     pending_approval --> approved : human approves
     pending_approval --> dispatching : human rejects
     approved --> exported : output shipped
     exported --> outcome_check : validator runs
     outcome_check --> queued : outcome not yet met
-    outcome_check --> done : outcome met ✓
+    outcome_check --> done : outcome met
     dispatching --> escalated : max retries hit
     escalated --> [*] : human resolves
     done --> [*]
@@ -598,28 +881,29 @@ stateDiagram-v2
         <span class="cli-dot r"></span>
         <span class="cli-dot y"></span>
         <span class="cli-dot g"></span>
-        <span>FORGE CLI — Claude Code skill</span>
+        <span>FORGE CLI &mdash; Claude Code skill</span>
       </div>
       <div class="cli-code">
-<span class="cli-comment"># ─── Install (one-time, any machine) ───────────────────────</span>
-<span class="cli-prompt">$</span> <span class="cli-cmd">ln -s ~/projects/forge/skills/forge ~/.claude/skills/forge</span>
-<span class="cli-out">→ Skill linked. Use /forge:run in any Claude Code session.</span>
+<span class="cli-comment"># Install Hephaestus runtimes + link skill (one-time) -------</span>
+<span class="cli-prompt">$</span> <span class="cli-cmd">curl -fsSL https://raw.githubusercontent.com/agentlas-ai/Hephaestus/v0.7.0/scripts/install-all-runtimes.sh | bash</span>
+<span class="cli-prompt">$</span> <span class="cli-cmd">ln -sf ~/projects/forge/skills/forge ~/.claude/skills/forge</span>
+<span class="cli-out">&rarr; Skill linked. Use /forge:run in any Claude Code session.</span>
 
-<span class="cli-comment"># ─── Start a new FORGE project ──────────────────────────────</span>
+<span class="cli-comment"># Start a new FORGE project ----------------------------------</span>
 <span class="cli-prompt">/forge:run</span> <span class="cli-str">"book 5 meetings for Moreland school districts"</span>
-<span class="cli-out">→ Injecting fable...  Designing worker fleet...  Awaiting sign-off.</span>
+<span class="cli-out">&rarr; Injecting fable...  Designing fleet...  Generating AGENTS.md...  Awaiting sign-off.</span>
 
-<span class="cli-comment"># ─── Check loop status ──────────────────────────────────────</span>
+<span class="cli-comment"># Design architecture without starting loop -----------------</span>
+<span class="cli-prompt">/forge:design</span> <span class="cli-str">"build a renewal alert system"</span>
+<span class="cli-out">&rarr; ARCHITECTURE.yaml + AGENTS.md written. Review before running.</span>
+
+<span class="cli-comment"># Check loop status -----------------------------------------</span>
 <span class="cli-prompt">/forge:status</span>
-<span class="cli-out">→ moreland-sdr  |  queued: 12  |  pending_approval: 3  |  done: 0</span>
+<span class="cli-out">&rarr; moreland-sdr  |  queued: 12  |  stormbreaker: 3  |  pending_approval: 1  |  done: 0</span>
 
-<span class="cli-comment"># ─── Approve pending outputs ────────────────────────────────</span>
+<span class="cli-comment"># Approve pending outputs (Gate 8) -------------------------</span>
 <span class="cli-prompt">/forge:approve</span> <span class="cli-flag">--project</span> <span class="cli-str">moreland-sdr</span>
-<span class="cli-out">→ 3 outputs in queue. Review each → a(pprove) / r(eject) / s(kip)</span>
-
-<span class="cli-comment"># ─── Stop loop (pause — resumable) ─────────────────────────</span>
-<span class="cli-prompt">/forge:stop</span> <span class="cli-flag">--project</span> <span class="cli-str">moreland-sdr</span>
-<span class="cli-out">→ Loop paused. State saved. Resume with /forge:run --resume</span>
+<span class="cli-out">&rarr; 1 output passed all 8 Stormbreaker gates. a(pprove) / r(eject)</span>
       </div>
     </div>
   </div>
@@ -628,14 +912,14 @@ stateDiagram-v2
 <!-- FOOTER -->
 <footer>
   <p style="margin-bottom:0.5rem;">
-    <strong style="color:var(--text);">FORGE</strong> — Outcome-Based Agent OS
+    <strong style="color:var(--text);">FORGE</strong> &times; <strong style="color:var(--green);">Hephaestus</strong> &mdash; Outcome Execution OS
   </p>
   <p>
     <a href="https://github.com/samcolibri/forge" target="_blank">github.com/samcolibri/forge</a>
-    &nbsp;·&nbsp;
-    <a href="https://samcolibri.github.io/moreland-sdr-agent/" target="_blank">First Project: Moreland SDR →</a>
+    &nbsp;&middot;&nbsp;
+    <a href="https://samcolibri.github.io/moreland-sdr-agent/" target="_blank">First Project: Moreland SDR &rarr;</a>
   </p>
-  <p style="margin-top:1rem;font-size:0.75rem;">Built by Sam · Powered by Claude · 2026</p>
+  <p style="margin-top:1rem;font-size:0.75rem;">Built by Sam &middot; Powered by Claude + Hephaestus &middot; 2026</p>
 </footer>
 
 <script>

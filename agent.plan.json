@@ -31,5 +31,29 @@
         "reasons": []
       }
     }
+  ,
+    {
+      "id": "T2",
+      "title": "Update FORGE docs and dashboard to reflect Hephaestus integration",
+      "status": "in_progress",
+      "scope": {
+        "include": ["README.md", "docs/**", "FORGE.md"],
+        "exclude": []
+      },
+      "acceptance": [
+        "README.md updated with Stormbreaker gates table and Hephaestus architecture",
+        "docs/index.html updated with Stormbreaker diagram and Hephaestus integration cards",
+        "FORGE.md created as identity/soul document"
+      ],
+      "verify": [
+        "test -f README.md",
+        "test -f docs/index.html",
+        "test -f FORGE.md"
+      ],
+      "risk": {
+        "level": "low",
+        "reasons": []
+      }
+    }
   ]
 }
